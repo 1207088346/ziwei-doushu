@@ -277,7 +277,7 @@ body {
     <select id="locationCity" onchange="updateLocationValue()" style="width:120px">
       <option value="">选择城市</option>
     </select>
-    <input type="hidden" id="location" value="山东泰安新泰市">
+    <input type="hidden" id="location" value="北京东城区">
   </div>
   <div style="display:flex;align-items:flex-end">
     <button onclick="calculateChart()">排 盘</button>
@@ -508,16 +508,30 @@ function doVerifyRechargeCode() {
   setTimeout(() => { msg.textContent = ''; closeModal('rechargeModal'); }, 1500);
 }
 
-// ========== 每日运势 ==========
+// ========== 每日运势（增强版：时辰分析 + 地域五行 + 性别阴阳 + 自动更新）==========
+function getCurrentShiChen() {
+  const h = new Date().getHours();
+  const branches = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+  const names = ['子时(23-01)','丑时(01-03)','寅时(03-05)','卯时(05-07)','辰时(07-09)','巳时(09-11)','午时(11-13)','未时(13-15)','申时(15-17)','酉时(17-19)','戌时(19-21)','亥时(21-23)'];
+  const idx = Math.floor((h + 1) / 2) % 12;
+  return { idx, branch: branches[idx], name: names[idx] };
+}
+
 function calcDailyFortune(birthData) {
   const today = new Date();
   const dayGZ = getDayPillar(today.getFullYear(), today.getMonth()+1, today.getDate());
+  const shiChen = getCurrentShiChen();
   const bStem = birthData.dayPillar.stem, tStem = dayGZ.stem;
   const bBranch = birthData.dayPillar.branch, tBranch = dayGZ.branch;
+  const hBranch = birthData.hourPillar ? birthData.hourPillar.branch : '';
   const wxStem = {甲:'木',乙:'木',丙:'火',丁:'火',戊:'土',己:'土',庚:'金',辛:'金',壬:'水',癸:'水'};
+  const wxBranch = {子:'水',丑:'土',寅:'木',卯:'木',辰:'土',巳:'火',午:'火',未:'土',申:'金',酉:'金',戌:'土',亥:'水'};
   const wxCycle = {木:'火',火:'土',土:'金',金:'水',水:'木'};
   const wxControl = {木:'土',土:'水',水:'火',火:'金',金:'木'};
   const bWx = wxStem[bStem], tWx = wxStem[tStem];
+  const scWx = wxBranch[shiChen.branch]; // 时辰五行
+
+  // === 1. 日主 vs 今日五行 ===
   let fortune = '', score = 3, relationType = '';
   if (wxCycle[bWx] === tWx) {
     fortune = '今日五行能量与你的命格相生，天地之气顺遂，做事得心应手，事半功倍。'; score = 5; relationType = '相生（大吉）';
@@ -530,39 +544,110 @@ function calcDailyFortune(birthData) {
   } else if (bWx === tWx) {
     fortune = '今日与你的命格五行同气，平稳安定，宜守不宜攻，适合日常事务。'; score = 3; relationType = '比和（平）';
   }
+
+  // === 2. 日支 vs 今日支（地支关系）===
   const branchClash = {子:'午',丑:'未',寅:'申',卯:'酉',辰:'戌',巳:'亥'};
   const branchHarmony = {子:'丑',寅:'亥',卯:'戌',辰:'酉',巳:'申',午:'未'};
-  let branchAnalysis = '';
+  const branchPenalty = {子:'卯',丑:'戌',寅:'巳',巳:'申',午:'丑',未:'子',申:'亥',酉:'戌',辰:'辰',亥:'亥'};
+  let branchAnalysis = '', branchDetail = '';
   for (let [k,v] of Object.entries(branchClash)) {
     if ((bBranch===k&&tBranch===v) || (bBranch===v&&tBranch===k)) {
-      branchAnalysis = '日支' + bBranch + '与今日' + tBranch + '相冲，易有突发变动，出行注意安全，情绪宜稳。';
+      branchAnalysis = '日支' + bBranch + '与今日' + tBranch + '相冲，易有突发变动。出行注意安全，情绪宜稳，避免与人争执。';
+      branchDetail = '六冲之日，大事不宜。冲则动，动则生变。今日适合处理紧急事务，但不适合做长远规划。驾车出行需格外小心。';
       score = Math.max(1, score-1);
     }
   }
   for (let [k,v] of Object.entries(branchHarmony)) {
     if ((bBranch===k&&tBranch===v) || (bBranch===v&&tBranch===k)) {
-      branchAnalysis = '日支' + bBranch + '与今日' + tBranch + '六合，人缘极佳，利合作、签约、婚恋。';
+      branchAnalysis = '日支' + bBranch + '与今日' + tBranch + '六合，人缘极佳，利合作、签约、婚恋。贵人运强，所求易得。';
+      branchDetail = '六合之日，诸事顺遂。适合谈合作、签合同、相亲约会。人际关系和谐，易得他人相助。';
       score = Math.min(5, score+1);
     }
   }
+  // 地支三合
+  const triHarmony = {申子辰:'水',亥卯未:'木',寅午戌:'火',巳酉丑:'金'};
+  for (let [k,v] of Object.entries(triHarmony)) {
+    if (k.includes(bBranch) && k.includes(tBranch)) {
+      if (!branchDetail) branchDetail = '日支与今日地支成三合之势，能量聚集。' + v + '气旺盛，相关事务特别顺利。';
+      if (score < 4) score = 4;
+    }
+  }
+  if (!branchDetail) branchDetail = '今日地支关系平稳，无冲无合，一切如常。';
+
+  // === 3. 时辰分析 ===
+  let shiChenAnalysis = '';
+  if (wxCycle[bWx] === scWx) {
+    shiChenAnalysis = '当前时辰「' + shiChen.name + '」属' + scWx + '，生助你的日主' + bWx + '。此时段精力充沛，适合处理重要事务。';
+  } else if (wxCycle[scWx] === bWx) {
+    shiChenAnalysis = '当前时辰「' + shiChen.name + '」属' + scWx + '，得你日主' + bWx + '生养。此时段适合助人、社交、创意工作。';
+  } else if (wxControl[bWx] === scWx) {
+    shiChenAnalysis = '当前时辰「' + shiChen.name + '」属' + scWx + '，克制你的日主。此时段宜休息静养，避免重要决策。';
+  } else if (wxControl[scWx] === bWx) {
+    shiChenAnalysis = '当前时辰「' + shiChen.name + '」属' + scWx + '，被你的日主' + bWx + '所克。此时段你主导力强，适合攻坚克难。';
+  } else {
+    shiChenAnalysis = '当前时辰「' + shiChen.name + '」属' + scWx + '，与日主五行相同。此时段平稳安定，能量充足。';
+  }
+
+  // === 4. 出生时辰 vs 当前时辰 ===
+  let hourVsNowAnalysis = '';
+  if (hBranch) {
+    const hWx = wxBranch[hBranch];
+    if (hBranch === shiChen.branch) {
+      hourVsNowAnalysis = '当前时辰正临你的出生时辰' + hBranch + '时，是今日气场最强的时段。适合做重要决策，直觉最为敏锐。';
+    } else if (wxCycle[hWx] === scWx) {
+      hourVsNowAnalysis = '出生时辰' + hBranch + '时（' + hWx + '）生助当前时辰' + shiChen.branch + '时（' + scWx + '），今日此时段有额外的福报加持。';
+    }
+  }
+
+  // === 5. 出生地五行 ===
+  const cityData = birthData.location ? getCityData(birthData.location) : null;
+  const locWx = cityData ? cityData.wuxing : null;
+  let locFortuneNote = '';
+  if (locWx) {
+    if (wxCycle[locWx] === tWx) locFortuneNote = '出生地五行（' + locWx + '）生助今日五行（' + tWx + '），在外发展的你今日受家乡气场庇护。';
+    else if (wxCycle[tWx] === locWx) locFortuneNote = '今日五行（' + tWx + '）滋养出生地五行（' + locWx + '），今日适合处理家乡事务或联系家人。';
+    else if (locWx === tWx) locFortuneNote = '出生地五行与今日五行同属' + locWx + '，今日回老家或做与家乡相关的事情特别顺利。';
+  }
+
+  // === 6. 性别特质 ===
+  const genderNote = birthData.gender === 'male'
+    ? '男命属阳，今日宜主动进取，以刚健之姿应事。'
+    : '女命属阴，今日宜以柔克刚，以智慧化解矛盾。';
+
+  // === 7. 各项分数 ===
+  const loveScore = score >= 4 ? 5 : (score === 3 ? 3 : (score === 2 ? 2 : 1));
+  const workScore = score >= 4 ? (bWx=== '木'||bWx=== '火' ? 5 : 4) : (score === 3 ? 3 : 2);
+  const moneyScore = bWx === '金' || bWx === '土' ? score : (score >= 4 ? 4 : score);
+  const healthScore = bWx === '木' || bWx === '水' ? (score >= 4 ? 5 : score) : score;
+
+  const scoreNames = ['','大凶','凶','平','吉','大吉'];
+  const scoreColors = ['','var(--quan)','var(--quan)','var(--text-dim)','var(--lu)','var(--lu)'];
+
+  // === 8. 幸运项 ===
   const wxToColor = {木:'绿/青',火:'红/紫',土:'黄/棕',金:'白/金',水:'黑/蓝'};
   const wxToNum = {木:'3,8',火:'2,7',土:'5,0',金:'4,9',水:'1,6'};
   const wxToDir = {木:'东方',火:'南方',土:'中央',金:'西方',水:'北方'};
   const luckyWx = wxCycle[bWx] || '土';
   const avoidWx = wxControl[bWx] || '木';
-  const scoreNames = ['','凶','平','平','吉','大吉'];
-  const scoreColors = ['','var(--quan)','var(--text-dim)','var(--text-dim)','var(--lu)','var(--lu)'];
+  const luckyAct = {木:'运动/学习/种植',火:'社交/演讲/创作',土:'理财/储存/规划',金:'决策/交易/谈判',水:'旅行/阅读/冥想'};
+
   return {
     date: `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`,
-    dayGZ: dayGZ.ganZhi, fortune, score, relationType,
-    branchAnalysis, bWx, tWx,
+    dayGZ: dayGZ.ganZhi, tStem, tBranch,
+    fortune, score, relationType, branchAnalysis, branchDetail,
+    shiChen, shiChenAnalysis, hourVsNowAnalysis, locFortuneNote, genderNote,
+    bWx, tWx, scWx,
     luckyColor: wxToColor[luckyWx], luckyNum: wxToNum[luckyWx], luckyDir: wxToDir[luckyWx],
+    luckyAct: luckyAct[luckyWx]||'日常事务',
     avoidColor: wxToColor[avoidWx], avoidDir: wxToDir[avoidWx],
-    scoreName: scoreNames[score]||'平', scoreColor: scoreColors[score]||'var(--text-dim)'
+    scoreName: scoreNames[score]||'平', scoreColor: scoreColors[score]||'var(--text-dim)',
+    scores: { love: loveScore, work: workScore, money: moneyScore, health: healthScore }
   };
 }
 
 let __dailyFortuneData = null;
+let __dailyFortuneTimer = null;
+
 function queryDailyFortune() {
   const data = window.__CHART_DATA;
   if (!data) { alert('请先排盘获取命盘数据'); return; }
@@ -587,49 +672,104 @@ function queryDailyFortune() {
     dayPillar: data.fourPillars.day,
     yearPillar: data.fourPillars.year,
     monthPillar: data.fourPillars.month,
-    hourPillar: data.fourPillars.hour
+    hourPillar: data.fourPillars.hour,
+    location: data.location,
+    gender: data.gender
   });
   renderDailyFortune(__dailyFortuneData);
+  // 每个时辰自动刷新
+  startAutoFortuneRefresh();
 }
+
+function startAutoFortuneRefresh() {
+  if (__dailyFortuneTimer) clearInterval(__dailyFortuneTimer);
+  // 每小时检查一次，时辰变化时自动刷新
+  __dailyFortuneTimer = setInterval(() => {
+    const data = window.__CHART_DATA;
+    if (!data) return;
+    const oldSC = __dailyFortuneData ? __dailyFortuneData.shiChen.branch : '';
+    const newSC = getCurrentShiChen().branch;
+    if (newSC !== oldSC) {
+      __dailyFortuneData = calcDailyFortune({
+        dayPillar: data.fourPillars.day,
+        yearPillar: data.fourPillars.year,
+        monthPillar: data.fourPillars.month,
+        hourPillar: data.fourPillars.hour,
+        location: data.location,
+        gender: data.gender
+      });
+      renderDailyFortune(__dailyFortuneData);
+    }
+  }, 60000); // 每分钟检查一次时辰变化
+}
+
 function renderDailyFortune(fd) {
   const el = document.getElementById('dailyFortuneContent');
-  const advice = fd.score >= 4
-    ? '宜主动出击，把握良机。可安排重要会议、签约、面试等事项。'
-    : fd.score <= 1
-    ? '宜静不宜动，多休息、少决策。避免投资、出行等重大事务。'
-    : '平稳度过即可，可处理日常事务，不宜冒进也不宜退缩。';
-  const adviceLove = fd.score >= 4 ? '良缘易结，单身者宜多社交；有伴者感情升温。' : fd.score <= 1 ? '易生口角，多包容少争执。' : '感情平稳，细水长流。';
-  const adviceWork = fd.score >= 4 ? '事业运旺，利求职、晋升、谈判。' : fd.score <= 1 ? '工作压力大，避免与同事冲突。' : '按部就班，稳中求进。';
-  const adviceMoney = fd.score >= 4 ? '财运上扬，可适当投资；偏财运佳。' : fd.score <= 1 ? '易破财，慎投资，防诈骗。' : '收支平衡，不宜冒险投资。';
+  const s = fd.scores;
+
+  const renderScore = (v) => '⭐'.repeat(v) + '☆'.repeat(5-v);
+  const categoryCard = (icon, title, score, text) => `
+    <div style="padding:10px;background:rgba(201,169,110,0.06);border-radius:8px;text-align:center;">
+      <div style="font-size:1.2em;">${icon}</div>
+      <div style="font-weight:bold;color:var(--gold-light)">${title}</div>
+      <div style="font-size:0.85em;">${renderScore(score)}</div>
+      <div style="font-size:0.78em;color:var(--text-dim);margin-top:2px;">${text}</div>
+    </div>`;
+
+  const loveText = s.love >= 5 ? '良缘易结' : s.love >= 4 ? '人缘不错' : s.love >= 3 ? '感情平稳' : '易生口角';
+  const workText = s.work >= 5 ? '事业高升' : s.work >= 4 ? '稳步前进' : s.work >= 3 ? '按部就班' : '阻力较大';
+  const moneyText = s.money >= 5 ? '财运旺盛' : s.money >= 4 ? '收入可观' : s.money >= 3 ? '收支平衡' : '破财之兆';
+  const healthText = s.health >= 5 ? '精力充沛' : s.health >= 4 ? '身心舒畅' : s.health >= 3 ? '注意休息' : '易感疲劳';
+
   el.innerHTML = `
     <div style="padding:12px 0;">
       <div style="text-align:center;">
-        <div style="font-size:0.82em;color:var(--text-dim);">📅 ${fd.date} · 日柱 <span class="hl">${fd.dayGZ}</span></div>
+        <div style="font-size:0.82em;color:var(--text-dim);">📅 ${fd.date} · 日柱 <span class="hl">${fd.dayGZ}</span> · <span style="color:var(--gold-light)">${fd.shiChen.name}</span></div>
         <div style="font-size:2.2em;font-weight:bold;color:${fd.scoreColor};margin:6px 0;">${fd.scoreName}</div>
         <div style="font-size:0.82em;color:var(--text-dim);">${'★'.repeat(fd.score)}${'☆'.repeat(5-fd.score)} · ${fd.relationType}</div>
       </div>
-      <div style="margin:12px 0;padding:12px;background:rgba(201,169,110,0.06);border-radius:8px;line-height:1.9;">
-        <p>🔮 <b>总体运势：</b>${fd.fortune}</p>
-        ${fd.branchAnalysis ? `<p style="margin-top:6px;">📌 <b>地支关系：</b>${fd.branchAnalysis}</p>` : ''}
-        <p style="margin-top:6px;">⚖ <b>五行互动：</b>日主<span class="hl">${fd.bWx}</span> × 今日<span class="hl">${fd.tWx}</span></p>
+
+      <!-- 四大类别评分 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin:12px 0;">
+        ${categoryCard('💕','感情',s.love,loveText)}
+        ${categoryCard('💼','事业',s.work,workText)}
+        ${categoryCard('💰','财运',s.money,moneyText)}
+        ${categoryCard('❤️','健康',s.health,healthText)}
       </div>
+
+      <!-- 总体运势 -->
+      <div style="margin:8px 0;padding:12px;background:rgba(201,169,110,0.06);border-radius:8px;line-height:1.9;">
+        <p>🔮 <b>总体运势：</b>${fd.fortune}</p>
+        <p style="margin-top:6px;">⚖ <b>五行互动：</b>日主<span class="hl">${fd.bWx}</span> × 今日<span class="hl">${fd.tWx}</span></p>
+        ${fd.branchAnalysis ? `<p style="margin-top:6px;">📌 <b>地支关系：</b>${fd.branchAnalysis}</p>` : ''}
+        <p style="margin-top:4px;font-size:0.82em;color:var(--text-dim);">${fd.branchDetail}</p>
+      </div>
+
+      <!-- 时辰分析 -->
+      <div style="margin:8px 0;padding:10px;background:rgba(201,169,110,0.04);border-radius:6px;border-left:3px solid var(--gold);">
+        <p style="font-size:0.85em;">⏰ <b>时辰分析：</b>${fd.shiChenAnalysis}</p>
+        ${fd.hourVsNowAnalysis ? `<p style="margin-top:4px;font-size:0.82em;color:var(--gold-light);">🔔 ${fd.hourVsNowAnalysis}</p>` : ''}
+      </div>
+
+      <!-- 地域与性别 -->
+      ${fd.locFortuneNote ? `<p style="font-size:0.85em;margin-top:4px;">🏠 ${fd.locFortuneNote}</p>` : ''}
+      <p style="font-size:0.82em;color:var(--text-dim);margin-top:2px;">👤 ${fd.genderNote}</p>
+
+      <!-- 幸运信息 -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;font-size:0.82em;">
         <div style="padding:8px;background:rgba(39,174,96,0.1);border-radius:6px;">
           <span style="color:var(--lu);">🍀 幸运色：</span>${fd.luckyColor}<br>
           <span style="color:var(--lu);">🍀 幸运数：</span>${fd.luckyNum}<br>
-          <span style="color:var(--lu);">🍀 吉方位：</span>${fd.luckyDir}
+          <span style="color:var(--lu);">🍀 吉方位：</span>${fd.luckyDir}<br>
+          <span style="color:var(--lu);">🍀 宜：</span>${fd.luckyAct}
         </div>
         <div style="padding:8px;background:rgba(231,76,60,0.08);border-radius:6px;">
           <span style="color:var(--quan);">⚠ 慎用色：</span>${fd.avoidColor}<br>
           <span style="color:var(--quan);">⚠ 慎方位：</span>${fd.avoidDir}
         </div>
       </div>
-      <div style="margin:10px 0;font-size:0.85em;line-height:1.8;">
-        <p><b>📋 今日建议：</b>${advice}</p>
-        <p><b>💕 感情：</b>${adviceLove}</p>
-        <p><b>💼 事业：</b>${adviceWork}</p>
-        <p><b>💰 财运：</b>${adviceMoney}</p>
-      </div>
+
+      <p style="text-align:center;font-size:0.7em;color:var(--text-dim);margin-top:8px;">🔄 运势每时辰自动更新 · 当前${fd.shiChen.name}</p>
     </div>`;
 }
 
@@ -1174,7 +1314,15 @@ function initLocationDropdowns() {
 
   // 解析默认值
   for (let prov of CHINA_CITIES) {
-    if (defaultLoc.startsWith(prov.p)) { defaultProv = prov.p; break; }
+    if (defaultLoc.startsWith(prov.p)) {
+      defaultProv = prov.p;
+      // 从省名后面提取城市
+      const rest = defaultLoc.substring(prov.p.length);
+      for (let c of prov.c) {
+        if (rest === c || rest.startsWith(c)) { defaultCity = c; break; }
+      }
+      break;
+    }
     for (let c of prov.c) {
       if (defaultLoc.includes(c)) { defaultProv = prov.p; defaultCity = c; break; }
     }
@@ -1418,6 +1566,48 @@ function renderHexagramAnalysis(data) {
   }
   html += `<p>体卦（内）<strong>${hx.lowerName}（${tiWx}）</strong> · 用卦（外）<strong>${hx.upperName}（${yongWx}）</strong></p>`;
   html += `<p style="color:var(--gold-light);">${tiYongAnalysis}</p>`;
+
+  // 出生地五行与卦象互动
+  if (data.location) {
+    const cityData = getCityData(data.location);
+    if (cityData) {
+      html += '<h4>🏠 出生地与卦象合参</h4>';
+      const lWx = cityData.wuxing;
+      html += `<p>出生地<span class="hl">${data.location}</span>（${cityData.direction}·属${lWx}）。`;
+      // 地与体卦关系
+      let locGuaNote = '';
+      if (lWx === tiWx) {
+        locGuaNote = `出生地${lWx}与体卦${tiWx}（${hx.lowerName}）比和。在家乡或在出生地发展，卦象能量得到加固，根基深厚，运势稳定。`;
+      } else if (wxCycle[lWx] === tiWx) {
+        locGuaNote = `出生地${lWx}生体卦${tiWx}（${hx.lowerName}）。出生地是你的福地，源源不断滋养你的根本运势。此生宜扎根故土，借地气之利。`;
+      } else if (wxCycle[tiWx] === lWx) {
+        locGuaNote = `体卦${tiWx}（${hx.lowerName}）生出生地${lWx}。你反哺家乡，离乡发展更有可为。远方才是你的舞台。`;
+      } else if (wxControl[lWx] === tiWx) {
+        locGuaNote = `出生地${lWx}克体卦${tiWx}（${hx.lowerName}）。故土虽亲但气场不合，宜向外发展，向生助方位迁移。`;
+      } else if (wxControl[tiWx] === lWx) {
+        locGuaNote = `体卦${tiWx}（${hx.lowerName}）克出生地${lWx}。你在家乡有能力、有作为，但消耗偏大，需注意劳逸结合。`;
+      }
+      html += `${locGuaNote}</p>`;
+
+      // 性别与卦象
+      const isMale = data.gender === 'male';
+      const guaYinYang = {乾:'阳',兑:'阴',离:'阴',震:'阳',巽:'阴',坎:'阳',艮:'阳',坤:'阴'};
+      const tiYY = guaYinYang[hx.lowerName] || '阳';
+      const genderYY = isMale ? '阳' : '阴';
+      let genderGuaNote = '';
+      if (isMale && tiYY === '阳') {
+        genderGuaNote = `命主为${genderYY}性，体卦${hx.lowerName}属${tiYY}卦。阳刚配阳卦，如虎添翼。行事果敢刚健，有开拓精神。但需防过于刚硬，刚极易折，宜以柔济之。`;
+      } else if (!isMale && tiYY === '阴') {
+        genderGuaNote = `命主为${genderYY}性，体卦${hx.lowerName}属${tiYY}卦。阴柔配阴卦，以柔克刚。为人处世圆融聪慧，善用智慧化解难题。但需防过于柔弱，必要时应展现坚定立场。`;
+      } else if (isMale && tiYY === '阴') {
+        genderGuaNote = `命主为${genderYY}性，体卦${hx.lowerName}属${tiYY}卦。阳体遇阴卦，刚柔并济。外刚内柔，既有男子气概，又有细腻心思。此为文武双全之象。`;
+      } else {
+        genderGuaNote = `命主为${genderYY}性，体卦${hx.lowerName}属${tiYY}卦。阴体遇阳卦，柔中带刚。外表温和内心坚定，能屈能伸，是大将之才。`;
+      }
+      html += `<p style="margin-top:6px;">👤 ${genderGuaNote}</p>`;
+    }
+  }
+
   // 纳音五行补充
   html += '<h4>纳音五行</h4>';
   const nY = NAYIN_LOOKUP(pp.year.ganZhi), nM = NAYIN_LOOKUP(pp.month.ganZhi);
