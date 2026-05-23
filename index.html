@@ -271,7 +271,13 @@ body {
   </div>
   <div>
     <label>出生地点</label>
-    <input type="text" id="location" value="山东泰安新泰市" style="width:130px">
+    <select id="locationProvince" onchange="updateCityDropdown()" style="width:100px">
+      <option value="">选择省份</option>
+    </select>
+    <select id="locationCity" onchange="updateLocationValue()" style="width:120px">
+      <option value="">选择城市</option>
+    </select>
+    <input type="hidden" id="location" value="山东泰安新泰市">
   </div>
   <div style="display:flex;align-items:flex-end">
     <button onclick="calculateChart()">排 盘</button>
@@ -1112,6 +1118,108 @@ const HS = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
 const EB = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
 const ZODIAC = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
 const WU_XING = ['木','火','土','金','水'];
+
+// 中国城市数据（省份 → 城市 → 五行方位）
+const CHINA_CITIES = [
+  {p:'北京',c:['东城区','西城区','朝阳区','海淀区','丰台区','通州区','昌平区'],wx:'水',dir:'北方'},
+  {p:'天津',c:['和平区','河西区','南开区','河东区','滨海新区','武清区'],wx:'水',dir:'北方'},
+  {p:'上海',c:['黄浦区','徐汇区','浦东新区','静安区','虹口区','闵行区','杨浦区'],wx:'木',dir:'东方'},
+  {p:'重庆',c:['渝中区','江北区','南岸区','沙坪坝区','九龙坡区','万州区','涪陵区'],wx:'金',dir:'西方'},
+  {p:'河北',c:['石家庄','唐山','保定','邯郸','廊坊','沧州','邢台','秦皇岛','张家口','承德','衡水'],wx:'水',dir:'北方'},
+  {p:'山西',c:['太原','大同','阳泉','长治','临汾','晋中','运城','忻州','吕梁','晋城'],wx:'土',dir:'中央'},
+  {p:'内蒙古',c:['呼和浩特','包头','鄂尔多斯','赤峰','通辽','呼伦贝尔','乌兰察布'],wx:'水',dir:'北方'},
+  {p:'辽宁',c:['沈阳','大连','鞍山','抚顺','本溪','丹东','锦州','营口','阜新','辽阳','盘锦','铁岭','朝阳','葫芦岛'],wx:'土',dir:'东北'},
+  {p:'吉林',c:['长春','吉林','四平','辽源','通化','白山','松原','白城','延边'],wx:'土',dir:'东北'},
+  {p:'黑龙江',c:['哈尔滨','齐齐哈尔','大庆','牡丹江','佳木斯','鸡西','鹤岗','双鸭山','伊春','七台河','黑河','绥化'],wx:'土',dir:'东北'},
+  {p:'江苏',c:['南京','苏州','无锡','常州','南通','扬州','镇江','泰州','徐州','盐城','淮安','连云港','宿迁'],wx:'木',dir:'东方'},
+  {p:'浙江',c:['杭州','宁波','温州','嘉兴','湖州','绍兴','金华','衢州','舟山','台州','丽水'],wx:'木',dir:'东方'},
+  {p:'安徽',c:['合肥','芜湖','蚌埠','淮南','马鞍山','淮北','铜陵','安庆','黄山','滁州','阜阳','宿州','六安','亳州','池州','宣城'],wx:'木',dir:'东方'},
+  {p:'福建',c:['福州','厦门','泉州','漳州','莆田','三明','南平','龙岩','宁德'],wx:'木',dir:'东南'},
+  {p:'江西',c:['南昌','九江','景德镇','萍乡','新余','鹰潭','赣州','吉安','宜春','抚州','上饶'],wx:'木',dir:'南方'},
+  {p:'山东',c:['济南','青岛','烟台','潍坊','临沂','淄博','济宁','泰安','聊城','德州','滨州','菏泽','枣庄','东营','日照','莱芜','威海','新泰','曲阜','滕州','诸城','寿光','肥城'],wx:'木',dir:'东方'},
+  {p:'河南',c:['郑州','洛阳','开封','平顶山','安阳','鹤壁','新乡','焦作','濮阳','许昌','漯河','南阳','商丘','信阳','周口','驻马店'],wx:'土',dir:'中央'},
+  {p:'湖北',c:['武汉','黄石','十堰','宜昌','襄阳','鄂州','荆门','孝感','荆州','黄冈','咸宁','随州','恩施'],wx:'土',dir:'中央'},
+  {p:'湖南',c:['长沙','株洲','湘潭','衡阳','邵阳','岳阳','常德','张家界','益阳','郴州','永州','怀化','娄底'],wx:'土',dir:'南方'},
+  {p:'广东',c:['广州','深圳','珠海','汕头','佛山','韶关','湛江','肇庆','江门','茂名','惠州','梅州','汕尾','河源','阳江','清远','东莞','中山','潮州','揭阳','云浮'],wx:'火',dir:'南方'},
+  {p:'广西',c:['南宁','柳州','桂林','梧州','北海','防城港','钦州','贵港','玉林','百色','贺州','河池','来宾','崇左'],wx:'火',dir:'南方'},
+  {p:'海南',c:['海口','三亚','三沙','儋州','五指山','琼海','文昌','万宁','东方'],wx:'火',dir:'南方'},
+  {p:'四川',c:['成都','绵阳','自贡','攀枝花','泸州','德阳','广元','遂宁','内江','乐山','资阳','宜宾','南充','达州','雅安','广安','巴中','眉山','西昌'],wx:'金',dir:'西方'},
+  {p:'贵州',c:['贵阳','六盘水','遵义','安顺','毕节','铜仁','黔西南','黔东南','黔南'],wx:'金',dir:'西南'},
+  {p:'云南',c:['昆明','曲靖','玉溪','保山','昭通','丽江','普洱','临沧','楚雄','红河','文山','西双版纳','大理','德宏'],wx:'金',dir:'西南'},
+  {p:'西藏',c:['拉萨','日喀则','昌都','林芝','山南','那曲','阿里'],wx:'金',dir:'西方'},
+  {p:'陕西',c:['西安','铜川','宝鸡','咸阳','渭南','延安','汉中','榆林','安康','商洛'],wx:'金',dir:'西北'},
+  {p:'甘肃',c:['兰州','嘉峪关','金昌','白银','天水','武威','张掖','平凉','酒泉','庆阳','定西','陇南'],wx:'金',dir:'西北'},
+  {p:'青海',c:['西宁','海东','海北','黄南','海南州','果洛','玉树','海西'],wx:'金',dir:'西北'},
+  {p:'宁夏',c:['银川','石嘴山','吴忠','固原','中卫'],wx:'金',dir:'西北'},
+  {p:'新疆',c:['乌鲁木齐','克拉玛依','吐鲁番','哈密','昌吉','博尔塔拉','巴音郭楞','阿克苏','克孜勒苏','喀什','和田','伊犁','塔城','阿勒泰'],wx:'金',dir:'西北'},
+  {p:'香港',c:['中西区','湾仔区','东区','南区','油尖旺区','深水埗区','九龙城区','黄大仙区','观塘区','沙田区','葵青区','荃湾区','屯门区','元朗区','北区','大埔区'],wx:'火',dir:'南方'},
+  {p:'澳门',c:['花地玛堂区','圣安多尼堂区','大堂区','望德堂区','风顺堂区'],wx:'火',dir:'南方'},
+  {p:'台湾',c:['台北','高雄','台中','台南','基隆','新竹','嘉义','桃园','新北','宜兰','花莲','台东','彰化','云林','苗栗','屏东','南投'],wx:'木',dir:'东南'}
+];
+
+function getCityData(cityName) {
+  for (let prov of CHINA_CITIES) {
+    for (let c of prov.c) {
+      if (c === cityName) return { province:prov.p, city:c, wuxing:prov.wx, direction:prov.dir };
+    }
+  }
+  return null;
+}
+
+// 初始化省份下拉框
+function initLocationDropdowns() {
+  const sel = document.getElementById('locationProvince');
+  const defaultLoc = document.getElementById('location').value;
+  let defaultProv = '', defaultCity = '';
+
+  // 解析默认值
+  for (let prov of CHINA_CITIES) {
+    if (defaultLoc.startsWith(prov.p)) { defaultProv = prov.p; break; }
+    for (let c of prov.c) {
+      if (defaultLoc.includes(c)) { defaultProv = prov.p; defaultCity = c; break; }
+    }
+    if (defaultProv) break;
+  }
+
+  // 填充省份
+  sel.innerHTML = '<option value="">选择省份</option>';
+  for (let prov of CHINA_CITIES) {
+    const selAttr = prov.p === defaultProv ? ' selected' : '';
+    sel.innerHTML += `<option value="${prov.p}"${selAttr}>${prov.p}</option>`;
+  }
+  updateCityDropdown();
+
+  // 设置默认城市
+  if (defaultCity) {
+    const citySel = document.getElementById('locationCity');
+    for (let opt of citySel.options) {
+      if (opt.value === defaultCity) { opt.selected = true; break; }
+    }
+  }
+  updateLocationValue();
+}
+
+function updateCityDropdown() {
+  const provName = document.getElementById('locationProvince').value;
+  const citySel = document.getElementById('locationCity');
+  citySel.innerHTML = '<option value="">选择城市</option>';
+  if (!provName) { updateLocationValue(); return; }
+
+  const prov = CHINA_CITIES.find(p => p.p === provName);
+  if (prov) {
+    for (let c of prov.c) {
+      citySel.innerHTML += `<option value="${c}">${c}</option>`;
+    }
+    if (prov.c.length === 1) citySel.value = prov.c[0];
+  }
+  updateLocationValue();
+}
+
+function updateLocationValue() {
+  const prov = document.getElementById('locationProvince').value;
+  const city = document.getElementById('locationCity').value;
+  document.getElementById('location').value = city ? (prov + city) : (prov || '');
+}
 
 // ============================================================
 //  64卦系统 / I Ching Hexagram System
@@ -2405,32 +2513,61 @@ function getOverallAnalysis(data) {
     html += '癸水为阴水，如雨露之水，柔中带刚，适应力强。未月土旺，需金来泄土生水。时支酉金为偏印，对日主有生扶作用。</p>';
   }
 
-  // 地域五行分析
+  // 地域五行分析（城市 + 方位 + 五行综合）
   const wxGen = {木:'火',火:'土',土:'金',金:'水',水:'木'};
   const wxOver = {木:'土',土:'水',水:'火',火:'金',金:'木'};
   const dWx = wxStem[pp.day.stem]; // 日主五行
-  // 弱五行（生我、我生）
   const weakWx = Object.entries(wxCount).filter(([k,v])=>v<=1).map(([k])=>k);
-  const needWx = []; // 喜用神（简化为补弱）
+  const needWx = []; // 喜用神
   for (let w of ['木','火','土','金','水']) {
-    if (wxGen[w] === dWx) needWx.push(w); // 生我者
+    if (wxGen[w] === dWx) needWx.push(w);
   }
   const wxDir = {木:'东方',火:'南方',土:'中央',金:'西方',水:'北方'};
   if (data.location) {
+    const cityData = getCityData(data.location);
     html += '<h4>🌍 地域五行分析</h4>';
-    html += `<p><strong>出生地点：</strong><span class="hl">${data.location}</span></p>`;
+    html += `<p><strong>出生地点：</strong><span class="hl">${data.location}</span>`;
+
+    // 城市五行数据
+    if (cityData) {
+      html += ` · <span style="color:var(--gold-light)">${cityData.direction}之地</span> · 地属<span class="hl">${cityData.wuxing}</span>`;
+      // 城市五行与日主的关系
+      const locWx = cityData.wuxing;
+      let locCompat = '';
+      if (locWx === dWx) {
+        locCompat = '出生地五行与日主比和，根基稳固。当地环境与命主气场契合，适合长期在此发展。';
+      } else if (wxGen[locWx] === dWx) {
+        locCompat = '出生地五行生助日主，家乡是命主的福地。出生地给命主提供源源不断的能量滋养。';
+      } else if (wxGen[dWx] === locWx) {
+        locCompat = '日主生养出生地五行，命主对家乡有反哺之责。离乡发展可能更为有利。';
+      } else if (wxOver[locWx] === dWx) {
+        locCompat = '出生地五行克日主，在家乡发展阻力较大。宜向生助方位迁移。';
+      } else if (wxOver[dWx] === locWx) {
+        locCompat = '日主克出生地五行，在家乡有能力但消耗大。适合主导型角色。';
+      }
+      html += `<br><span style="font-size:0.85em;color:var(--gold-light);">${locCompat}</span></p>`;
+    } else {
+      html += '</p>';
+    }
+
     html += `<p>日主<span class="hl">${dWx}</span>，喜用神为<span class="good">${needWx.join('、')}</span>（生我之五行）。`;
     html += `利方位：${needWx.map(w=>`<span class="good">${wxDir[w]}</span>`).join('、')}。`;
-    // 不利方位
     const badWx = [];
     for (let w of ['木','火','土','金','水']) {
-      if (wxOver[dWx] === w) badWx.push(w); // 我克者（耗我）
-      if (wxOver[w] === dWx) badWx.push(w); // 克我者
+      if (wxOver[dWx] === w) badWx.push(w);
+      if (wxOver[w] === dWx) badWx.push(w);
     }
     if (badWx.length > 0) {
       html += `慎方位：${badWx.map(w=>`<span class="warn">${wxDir[w]}</span>`).join('、')}。</p>`;
     } else { html += '</p>'; }
-    html += `<p style="color:var(--text-dim);font-size:0.82em;">以上方位分析基于八字五行喜忌，供出行、置业、择业参考。实际运势需综合大运流年判断。</p>`;
+
+    // 性别与方位
+    const genderYinYang = data.gender === 'male' ? '阳' : '阴';
+    const dirYinYang = {东:'阳',南:'阳',西:'阴',北:'阴',东南:'阳',西南:'阴',东北:'阳',西北:'阴',中央:'中和'};
+    let genderNote = genderYinYang === '阳'
+      ? '命主为阳年生人，宜向阳气旺盛的东、南方发展，事业更具活力。'
+      : '命主为阴年生人，宜向阴气滋养的西、北方发展，利于积蓄实力。';
+    html += `<p style="color:var(--text-dim);font-size:0.82em;">${genderNote}以上分析综合八字喜忌、出生地方位五行及性别阴阳，供出行择业参考。</p>`;
   }
 
   // 64卦命卦分析
@@ -2529,6 +2666,7 @@ function getOverallAnalysis(data) {
 // ============================================================
 window.onload = function() {
   initAccountSystem();
+  initLocationDropdowns();
   // 显示价格
   const prices = getPrices();
   document.getElementById('dailyPriceDisplay').textContent = prices.daily_fortune;
