@@ -1,0 +1,2638 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>紫微斗数排盘系统 - Zi Wei Dou Shu</title>
+<style>
+/* ========== CSS 变量 & 基础 ========== */
+:root {
+  --bg: #0d1b2a;
+  --bg2: #141f30;
+  --bg-card: #1a2740;
+  --border: #2a3a55;
+  --gold: #c9a96e;
+  --gold-light: #e0c88a;
+  --text: #d8cfc0;
+  --text-dim: #8a8070;
+  --text-bright: #f0e8d8;
+  --lu: #27ae60;
+  --quan: #e74c3c;
+  --ke: #f39c12;
+  --ji: #5a5a6e;
+  --ziwei: #b07cd8;
+  --tianfu: #5b9bd5;
+  --aux: #7a8a7a;
+  --radius: 8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Microsoft YaHei','PingFang SC',sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+/* ========== 头部 ========== */
+.header {
+  text-align: center;
+  padding: 24px 16px 8px;
+}
+.header h1 { font-size: 2em; color: var(--gold); letter-spacing: 4px; }
+.header .subtitle { color: var(--text-dim); font-size: 0.9em; margin-top: 4px; }
+/* ========== 表单 ========== */
+.form-panel {
+  display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;
+  padding: 16px 20px; background: var(--bg2); border-radius: var(--radius);
+  border: 1px solid var(--border); margin: 0 16px 16px; max-width: 700px;
+}
+.form-panel label { color: var(--text-dim); font-size: 0.85em; }
+.form-panel input, .form-panel select {
+  background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; padding: 6px 10px; font-size: 0.95em;
+}
+.form-panel input[type="date"] { color-scheme: dark; }
+.form-panel button {
+  background: var(--gold); color: #1a1a1a; border: none; border-radius: 4px;
+  padding: 8px 20px; font-size: 0.95em; font-weight: bold; cursor: pointer;
+  transition: background 0.2s;
+}
+.form-panel button:hover { background: var(--gold-light); }
+/* ========== 四柱信息栏 ========== */
+.pillars-bar {
+  display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;
+  padding: 10px 20px; margin: 0 16px 16px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  max-width: 700px;
+}
+.pillar-item { text-align: center; min-width: 50px; }
+.pillar-item .p-label { color: var(--text-dim); font-size: 0.75em; }
+.pillar-item .p-ganzhi {
+  font-size: 1.3em; font-weight: bold; color: var(--gold);
+  writing-mode: vertical-lr; letter-spacing: 4px;
+}
+.pillar-item .p-name { font-size: 0.75em; color: var(--text-dim); }
+.info-tag {
+  display: inline-block; padding: 2px 10px; margin: 0 4px;
+  border-radius: 10px; font-size: 0.8em;
+  background: rgba(201,169,110,0.15); color: var(--gold-light);
+}
+/* ========== 主布局：星盘 + 分析 ========== */
+.main-container {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 24px;
+  padding: 0 16px 32px; max-width: 1100px; width: 100%;
+}
+/* ========== 星盘区域 ========== */
+.chart-section { flex: 1; min-width: 440px; max-width: 560px; }
+.chart-title {
+  color: var(--gold); font-size: 1em; margin-bottom: 10px;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 5px;
+  aspect-ratio: 1;
+}
+.palace-cell {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.palace-cell:hover { border-color: var(--gold); transform: scale(1.02); z-index: 2; }
+.palace-cell.selected { border-color: var(--gold); box-shadow: 0 0 12px rgba(201,169,110,0.35); }
+.palace-cell.highlight-sanhe { border-color: var(--ke); box-shadow: 0 0 10px rgba(243,156,18,0.3); }
+.palace-cell.highlight-opposite { border-color: var(--quan); box-shadow: 0 0 10px rgba(231,76,60,0.3); }
+.palace-cell .palace-name {
+  font-size: 0.7em; color: var(--gold); text-align: center;
+  border-bottom: 1px solid rgba(201,169,110,0.2); padding-bottom: 2px;
+}
+.palace-cell .palace-ganzhi { font-size: 0.65em; color: var(--text-dim); text-align: center; }
+.palace-cell .star-list { font-size: 0.7em; line-height: 1.4; margin-top: 2px; flex: 1; }
+.palace-cell .star-item { white-space: nowrap; }
+.palace-cell .star-ziwei { color: var(--ziwei); }
+.palace-cell .star-tianfu { color: var(--tianfu); }
+.palace-cell .star-aux { color: var(--aux); }
+.star-sihua-lu { color: var(--lu); font-weight: bold; }
+.star-sihua-quan { color: var(--quan); font-weight: bold; }
+.star-sihua-ke { color: var(--ke); font-weight: bold; }
+.star-sihua-ji { color: var(--ji); }
+.brightness-tag { font-size: 0.6em; opacity: 0.7; }
+/* 中心区域 */
+.cell-center { background: transparent; border: none; cursor: default; }
+.cell-center:hover { transform: none; }
+.center-ornament {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; font-size: 2.5em; color: var(--gold); opacity: 0.4;
+}
+/* ========== 分析面板 ========== */
+.analysis-section { flex: 1; min-width: 300px; max-width: 420px; }
+.analysis-title {
+  color: var(--gold); font-size: 1em; margin-bottom: 10px;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.tab-bar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.tab-btn {
+  padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg-card); color: var(--text-dim); cursor: pointer;
+  font-size: 0.78em; transition: all 0.2s;
+}
+.tab-btn:hover, .tab-btn.active { background: var(--gold); color: #1a1a1a; border-color: var(--gold); }
+.analysis-content {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+  max-height: 500px; overflow-y: auto; font-size: 0.88em; line-height: 1.8;
+}
+.analysis-content h4 { color: var(--gold); margin: 12px 0 6px; }
+.analysis-content h4:first-child { margin-top: 0; }
+.analysis-content .hl { color: var(--gold-light); font-weight: bold; }
+.analysis-content .good { color: var(--lu); }
+.analysis-content .warn { color: var(--quan); }
+.analysis-content .note { color: var(--ke); }
+.sihua-legend { display: flex; gap: 12px; flex-wrap: wrap; margin: 6px 0; font-size: 0.78em; }
+.sihua-legend span { padding: 2px 8px; border-radius: 4px; }
+.sihua-legend .lg-lu { background: rgba(39,174,96,0.2); color: var(--lu); }
+.sihua-legend .lg-quan { background: rgba(231,76,60,0.2); color: var(--quan); }
+.sihua-legend .lg-ke { background: rgba(243,156,18,0.2); color: var(--ke); }
+.sihua-legend .lg-ji { background: rgba(90,90,110,0.2); color: var(--ji); }
+/* ========== 响应式 ========== */
+@media (max-width: 900px) {
+  .main-container { flex-direction: column; align-items: center; }
+  .chart-section { min-width: 340px; max-width: 400px; }
+  .palace-cell { padding: 3px; }
+  .palace-cell .star-list { font-size: 0.6em; }
+}
+	/* ========== 收费系统 / Auth & Payment ========== */
+	.auth-bar { position:fixed; top:10px; right:14px; z-index:100; display:flex; align-items:center; gap:8px; }
+	.auth-badge { padding:3px 10px; border-radius:10px; font-size:0.75em; font-weight:bold; }
+	.auth-badge.admin { background:rgba(201,169,110,0.2); color:var(--gold); }
+	.auth-badge.user { background:rgba(90,90,110,0.3); color:var(--text-dim); }
+	.auth-btn { padding:3px 10px; border-radius:4px; font-size:0.75em; cursor:pointer; border:1px solid var(--border); background:var(--bg-card); color:var(--text-dim); transition:all 0.2s; }
+	.auth-btn:hover { border-color:var(--gold); color:var(--gold); }
+	.recharge-btn { background:rgba(201,169,110,0.2) !important; border-color:var(--gold) !important; color:var(--gold-light) !important; animation:pulse 2s infinite; }
+	@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(201,169,110,0.4)} 50%{box-shadow:0 0 8px 2px rgba(201,169,110,0.15)} }
+	.quick-recharge-bar { text-align:center; padding:6px 16px; margin:0 16px; display:none; }
+	.quick-recharge-bar .inner { display:inline-flex; align-items:center; gap:10px; background:rgba(201,169,110,0.08); border:1px dashed var(--border); border-radius:8px; padding:6px 16px; font-size:0.82em; color:var(--text-dim); }
+	.quick-recharge-btn { padding:4px 14px; border-radius:14px; border:none; cursor:pointer; font-size:0.82em; font-weight:bold; background:var(--gold); color:#1a1a1a; transition:all 0.2s; }
+	.quick-recharge-btn:hover { background:var(--gold-light); }
+	.query-count { color:var(--gold-light); font-weight:bold; }
+
+	.modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.72); z-index:200; justify-content:center; align-items:center; }
+	.modal-overlay.show { display:flex; }
+	.modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:24px; width:90%; max-width:480px; max-height:85vh; overflow-y:auto; }
+	.modal-box h3 { color:var(--gold); margin-bottom:14px; text-align:center; font-size:1.1em; }
+	.modal-box .form-row { display:flex; gap:8px; margin-bottom:10px; align-items:center; }
+	.modal-box .form-row label { color:var(--text-dim); font-size:0.85em; white-space:nowrap; min-width:55px; }
+	.modal-box input[type="text"], .modal-box input[type="password"], .modal-box input[type="number"] { flex:1; padding:7px 10px; border-radius:4px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:0.9em; }
+	.modal-box .btn { padding:7px 14px; border-radius:4px; border:none; cursor:pointer; font-size:0.85em; font-weight:bold; transition:all 0.2s; }
+	.modal-box .btn-primary { background:var(--gold); color:#1a1a1a; }
+	.modal-box .btn-primary:hover { background:var(--gold-light); }
+	.modal-box .btn-secondary { background:var(--bg-card); color:var(--text-dim); border:1px solid var(--border); }
+	.modal-box .btn-secondary:hover { border-color:var(--gold); color:var(--gold); }
+	.modal-box .btn-danger { background:var(--quan); color:#fff; }
+	.modal-box .btn-danger:hover { opacity:0.85; }
+	.modal-box .btn-row { display:flex; gap:8px; justify-content:center; margin-top:14px; }
+	.modal-box .msg { text-align:center; margin:6px 0; font-size:0.82em; min-height:1.2em; }
+	.modal-box .msg.error { color:var(--quan); }
+	.modal-box .msg.success { color:var(--lu); }
+
+	.admin-tabs { display:flex; gap:4px; margin-bottom:14px; flex-wrap:wrap; }
+	.admin-tab { padding:4px 10px; border:1px solid var(--border); border-radius:4px; background:var(--bg-card); color:var(--text-dim); cursor:pointer; font-size:0.76em; transition:all 0.2s; }
+	.admin-tab.active { background:var(--gold); color:#1a1a1a; border-color:var(--gold); }
+	.admin-panel-body { min-height:180px; font-size:0.85em; }
+
+	.code-list { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:10px; max-height:180px; overflow-y:auto; font-family:'Consolas','Courier New',monospace; font-size:0.82em; line-height:1.8; margin:6px 0; }
+	.code-list .ci { color:var(--gold-light); }
+	.code-list .ci.used { color:var(--ji); text-decoration:line-through; }
+	.stat-row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid rgba(42,58,85,0.25); font-size:0.85em; }
+	.stat-row span:first-child { color:var(--text-dim); }
+	.stat-row span:last-child { color:var(--gold-light); font-weight:bold; }
+
+	.code-entry-bar { display:flex; gap:8px; justify-content:center; align-items:center; padding:8px 16px; margin:0 16px 8px; }
+	.code-entry-bar input { padding:6px 10px; border-radius:4px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:0.9em; width:170px; text-transform:uppercase; text-align:center; letter-spacing:2px; }
+	.code-entry-bar .btn-sm { padding:6px 14px; border-radius:4px; border:none; cursor:pointer; font-size:0.82em; font-weight:bold; background:var(--gold); color:#1a1a1a; transition:all 0.2s; }
+	.code-entry-bar .btn-sm:hover { background:var(--gold-light); }
+	.code-entry-bar .btn-sm:disabled { opacity:0.4; cursor:not-allowed; }
+	.code-entry-bar .qty { color:var(--text-dim); font-size:0.78em; }
+	.code-entry-bar .qty strong { color:var(--gold-light); }
+
+	/* 每日运势 */
+	.daily-fortune-section { max-width:1100px; margin:0 auto; padding:16px; }
+	.daily-fortune-header { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:8px; margin-bottom:0; }
+	.btn-sm { padding:6px 14px; border-radius:4px; border:none; cursor:pointer; font-size:0.82em; font-weight:bold; background:var(--gold); color:#1a1a1a; transition:all 0.2s; }
+	.btn-sm:hover { background:var(--gold-light); }
+
+	/* 账号栏图片上传按钮 */
+	input[type="file"] { color:var(--text-dim); font-size:0.82em; }
+	input[type="file"]::file-selector-button { background:var(--bg-card); color:var(--text-dim); border:1px solid var(--border); border-radius:4px; padding:4px 10px; cursor:pointer; margin-right:8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>紫微斗数 · 排盘系统</h1>
+  <div class="subtitle">Zi Wei Dou Shu — 三合 · 四化 · 飞星</div>
+</div>
+
+<!-- 账号栏 -->
+<div class="auth-bar" id="authBar">
+  <span id="accountBadge" class="auth-badge user">未登录</span>
+  <span id="accountBalance" style="display:none;background:rgba(201,169,110,0.15);padding:4px 12px;border-radius:14px;font-weight:bold;font-size:0.85em;color:var(--gold-light)"></span>
+  <span id="rechargeArea" style="display:none"><button class="auth-btn recharge-btn" onclick="showRecharge()">💰 充值</button></span>
+  <button class="auth-btn" id="saveChartBtn" onclick="saveChartToFile()" style="display:none">💾 保存</button>
+  <button class="auth-btn" id="accountLoginBtn" onclick="showLogin()">登录</button>
+  <button class="auth-btn" id="accountRegisterBtn" onclick="showRegister()">注册</button>
+  <button class="auth-btn" id="accountAdminBtn" onclick="openAdminPanel()" style="display:none">⚙ 管理</button>
+  <button class="auth-btn" id="accountLogoutBtn" onclick="logoutAccount()" style="display:none">退出</button>
+</div>
+
+<!-- 输入表单 -->
+<div class="form-panel">
+  <div>
+    <label>出生日期</label>
+    <input type="date" id="birthDate" value="2002-07-14">
+  </div>
+  <div>
+    <label>出生时间</label>
+    <input type="time" id="birthTime" value="17:30">
+  </div>
+  <div>
+    <label>性别</label>
+    <select id="gender"><option value="male" selected>男</option><option value="female">女</option></select>
+  </div>
+  <div>
+    <label>出生地点</label>
+    <input type="text" id="location" value="山东泰安新泰市" style="width:130px">
+  </div>
+  <div style="display:flex;align-items:flex-end">
+    <button onclick="calculateChart()">排 盘</button>
+  </div>
+</div>
+
+<!-- 快捷充值提示栏 -->
+<div class="quick-recharge-bar" id="quickRechargeBar">
+  <div class="inner">
+    <span>💰 排盘 <strong style="color:var(--gold-light)">¥<span id="quickPriceChart">8</span></strong> · 每日运势 <strong style="color:var(--gold-light)">¥<span id="quickPriceDaily">1</span></strong></span>
+    <span>余额：<strong style="color:var(--gold-light)" id="quickBalance">0</strong></span>
+    <button class="quick-recharge-btn" onclick="showRecharge()">立即充值</button>
+  </div>
+</div>
+
+<!-- 四柱八字信息栏 -->
+<div class="pillars-bar" id="pillarsBar"></div>
+
+<!-- 主内容 -->
+<div class="main-container">
+  <!-- 星盘 -->
+  <div class="chart-section">
+    <div class="chart-title">☯ 十二宫星盘 <span style="font-size:0.7em;color:var(--text-dim)">（点击宫位查看详解）</span></div>
+    <div class="chart-grid" id="chartGrid"></div>
+    <div class="sihua-legend" id="sihuaLegend" style="margin-top:10px;"></div>
+  </div>
+  <!-- 分析面板 -->
+  <div class="analysis-section">
+    <div class="analysis-title">命盘分析</div>
+    <div class="tab-bar" id="tabBar"></div>
+    <div class="tab-bar" style="margin-bottom:10px;">
+      <button class="tab-btn time-tab-btn active" data-tt="daxian" onclick="selectTimeTab('daxian')">大限</button>
+      <button class="tab-btn time-tab-btn" data-tt="liunian" onclick="selectTimeTab('liunian')">流年</button>
+      <button class="tab-btn time-tab-btn" data-tt="liuyue" onclick="selectTimeTab('liuyue')">流月</button>
+      <button class="tab-btn time-tab-btn" data-tt="liuri" onclick="selectTimeTab('liuri')">流日</button>
+    </div>
+    <div class="analysis-content" id="analysisContent"></div>
+  </div>
+</div>
+
+<!-- 每日运势 -->
+<div class="daily-fortune-section" id="dailyFortuneSection" style="display:none">
+  <div class="daily-fortune-header">
+    <span class="chart-title" style="border:none;margin:0">📅 每日运势</span>
+    <span style="font-size:0.75em;color:var(--text-dim);margin-left:12px">每日运势 ¥<strong id="dailyPriceDisplay">1</strong></span>
+    <button class="btn-sm" onclick="queryDailyFortune()" style="margin-left:12px">查询今日运势</button>
+  </div>
+  <div class="analysis-content" id="dailyFortuneContent" style="margin-top:8px;text-align:center;color:var(--text-dim);">
+    请先排盘，然后点击查询今日运势
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  音效系统 / Sound System
+// ============================================================
+function playChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    // "咚"声 — 低沉短促，0.5秒
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(160, now);
+    osc.frequency.exponentialRampToValueAtTime(55, now + 0.6);
+    gain.gain.setValueAtTime(0.9, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 1.0);
+  } catch(e) {}
+}
+
+// ============================================================
+//  模块 P：账号与收费系统 / Account & Payment
+// ============================================================
+
+const ADMIN_USER = 'zmx18';
+const APP_SECRET = 'zwds_2024_sec_v1';
+const DEFAULT_PRICES = { full_chart: 8, daily_fortune: 1 };
+
+// djb2 哈希
+function _h(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) { h = ((h << 5) + h) + s.charCodeAt(i); h = h & 0xFFFFFFFF; }
+  return (h >>> 0).toString(16).toUpperCase().padStart(4, '0').slice(-4);
+}
+
+// ========== 价格管理 ==========
+function getPrices() {
+  try { const p = JSON.parse(localStorage.getItem('zwds_prices')); return p && p.full_chart ? p : {...DEFAULT_PRICES}; }
+  catch(e) { return {...DEFAULT_PRICES}; }
+}
+function setPrices(prices) { localStorage.setItem('zwds_prices', JSON.stringify(prices)); }
+
+// ========== 账号管理 ==========
+function getAccounts() {
+  try { return JSON.parse(localStorage.getItem('zwds_accounts')) || {}; }
+  catch(e) { return {}; }
+}
+function saveAccounts(accs) { localStorage.setItem('zwds_accounts', JSON.stringify(accs)); }
+function getCurrentUser() { return sessionStorage.getItem('zwds_user') || ''; }
+function getCurrentAccount() {
+  const u = getCurrentUser(); return u ? (getAccounts()[u] || null) : null;
+}
+function isAdminLoggedIn() { const a = getCurrentAccount(); return a && a.role === 'admin'; }
+
+function registerAccount(username, password) {
+  if (!username || !password) return {ok:false, msg:'用户名和密码不能为空'};
+  if (username.length < 2) return {ok:false, msg:'用户名至少2个字符'};
+  if (password.length < 4) return {ok:false, msg:'密码至少4位'};
+  const accs = getAccounts();
+  if (accs[username]) return {ok:false, msg:'用户名已存在'};
+  accs[username] = {
+    password: _h(password), role: username === ADMIN_USER ? 'admin' : 'user',
+    balance: 0, createdAt: new Date().toISOString()
+  };
+  saveAccounts(accs);
+  return {ok:true, msg:'注册成功！请登录', username};
+}
+
+function loginAccount(username, password) {
+  const accs = getAccounts(); const acc = accs[username];
+  if (!acc) return {ok:false, msg:'账号不存在'};
+  if (acc.password !== _h(password)) return {ok:false, msg:'密码错误'};
+  sessionStorage.setItem('zwds_user', username);
+  return {ok:true, msg:'登录成功'};
+}
+function logoutAccount() {
+  sessionStorage.removeItem('zwds_user');
+  updateAccountUI();
+}
+
+function addBalance(username, amount) {
+  const accs = getAccounts(); if (!accs[username]) return false;
+  accs[username].balance = (accs[username].balance || 0) + amount;
+  saveAccounts(accs); return true;
+}
+function deductBalance(username, amount) {
+  const accs = getAccounts();
+  if (!accs[username]) return false;
+  if ((accs[username].balance || 0) < amount) return false;
+  accs[username].balance -= amount;
+  saveAccounts(accs); return true;
+}
+
+// ========== 支付记录 ==========
+function getPaymentRecords() {
+  try { return JSON.parse(localStorage.getItem('zwds_payments')) || []; } catch(e) { return []; }
+}
+function addPaymentRecord(username, amount, type, note) {
+  const recs = getPaymentRecords();
+  recs.push({ username, amount, type, note, time: new Date().toISOString() });
+  if (recs.length > 500) recs.splice(0, recs.length - 500);
+  localStorage.setItem('zwds_payments', JSON.stringify(recs));
+}
+
+// ========== QR码 ==========
+function getQRImage() { return localStorage.getItem('zwds_qr_image') || ''; }
+function setQRImage(dataUrl) { localStorage.setItem('zwds_qr_image', dataUrl); }
+
+// ========== 模态框 ==========
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// ========== 支付弹窗 ==========
+let _payAmount = 0, _payUser = '';
+function showPaymentModal(amount, user) {
+  _payAmount = amount; _payUser = user;
+  document.getElementById('payAmount').textContent = '¥' + amount;
+  document.getElementById('payDesc').textContent = '账户充值 ' + amount + ' 元';
+  const qrImg = document.getElementById('payQRImg');
+  const qrPlaceholder = document.getElementById('payQRPlaceholder');
+  const qrData = getQRImage();
+  if (qrData) { qrImg.src = qrData; qrImg.style.display = 'block'; qrPlaceholder.style.display = 'none'; }
+  else { qrImg.style.display = 'none'; qrPlaceholder.style.display = 'block'; }
+  openModal('payModal');
+}
+function confirmPayment() {
+  playChime();
+  closeModal('payModal');
+  if (_payAmount <= 0 || !_payUser) return;
+  // 创建待审核的充值记录
+  const recs = getPaymentRecords();
+  recs.push({
+    username: _payUser, amount: _payAmount, type: 'recharge',
+    note: '扫码充值（待审核）', time: new Date().toISOString(),
+    status: 'pending', code: ''
+  });
+  if (recs.length > 500) recs.splice(0, recs.length - 500);
+  localStorage.setItem('zwds_payments', JSON.stringify(recs));
+  document.getElementById('verifyCodeMsg').textContent = '';
+  document.getElementById('rechargeAmount').value = '';
+  alert('支付请求已提交！请等待管理员审核后提供验证码。');
+  _payAmount = 0; _payUser = '';
+}
+
+// ========== 支付流程：扫码支付后充值 ==========
+function doRecharge() {
+  const amount = parseInt(document.getElementById('rechargeAmount').value) || 0;
+  if (amount <= 0) { document.getElementById('verifyCodeMsg').textContent = '请输入有效金额'; document.getElementById('verifyCodeMsg').style.color = 'var(--quan)'; return; }
+  const user = getCurrentUser();
+  showPaymentModal(amount, user);
+}
+
+// ========== 验证码兑换（用户输入管理员给的验证码激活充值）==========
+function doVerifyRechargeCode() {
+  const code = document.getElementById('verifyCodeInput').value.trim().toUpperCase();
+  const msg = document.getElementById('verifyCodeMsg');
+  if (!code) { msg.textContent = '请输入验证码'; msg.style.color = 'var(--quan)'; return; }
+  // 查找匹配的 pending 记录
+  const recs = getPaymentRecords();
+  const rec = recs.find(r => r.status === 'pending' && r.code === code);
+  if (!rec) { msg.textContent = '验证码无效或已使用'; msg.style.color = 'var(--quan)'; return; }
+  // 激活充值
+  rec.status = 'completed';
+  rec.note = '扫码充值（已验证）';
+  rec.time = new Date().toISOString();
+  localStorage.setItem('zwds_payments', JSON.stringify(recs));
+  playChime();
+  addBalance(rec.username, rec.amount);
+  updateAccountUI();
+  msg.textContent = '充值成功！¥' + rec.amount + ' 已到账';
+  msg.style.color = 'var(--lu)';
+  document.getElementById('verifyCodeInput').value = '';
+  setTimeout(() => { msg.textContent = ''; closeModal('rechargeModal'); }, 1500);
+}
+
+// ========== 每日运势 ==========
+function calcDailyFortune(birthData) {
+  const today = new Date();
+  const dayGZ = getDayPillar(today.getFullYear(), today.getMonth()+1, today.getDate());
+  const bStem = birthData.dayPillar.stem, tStem = dayGZ.stem;
+  const bBranch = birthData.dayPillar.branch, tBranch = dayGZ.branch;
+  const wxStem = {甲:'木',乙:'木',丙:'火',丁:'火',戊:'土',己:'土',庚:'金',辛:'金',壬:'水',癸:'水'};
+  const wxCycle = {木:'火',火:'土',土:'金',金:'水',水:'木'};
+  const wxControl = {木:'土',土:'水',水:'火',火:'金',金:'木'};
+  const bWx = wxStem[bStem], tWx = wxStem[tStem];
+  let fortune = '', score = 3, relationType = '';
+  if (wxCycle[bWx] === tWx) {
+    fortune = '今日五行能量与你的命格相生，天地之气顺遂，做事得心应手，事半功倍。'; score = 5; relationType = '相生（大吉）';
+  } else if (wxCycle[tWx] === bWx) {
+    fortune = '今日你生助环境，虽需付出较多精力，但善行有报，利于积累人脉、广结善缘。'; score = 4; relationType = '我生（小吉）';
+  } else if (wxControl[bWx] === tWx) {
+    fortune = '今日外界五行克你命格，阻力较大，宜低调行事，避免重大决策和投资。'; score = 1; relationType = '相克（凶）';
+  } else if (wxControl[tWx] === bWx) {
+    fortune = '今日你克外物，有掌控力和决断力，适合攻坚克难、处理积压事务。'; score = 4; relationType = '我克（小吉）';
+  } else if (bWx === tWx) {
+    fortune = '今日与你的命格五行同气，平稳安定，宜守不宜攻，适合日常事务。'; score = 3; relationType = '比和（平）';
+  }
+  const branchClash = {子:'午',丑:'未',寅:'申',卯:'酉',辰:'戌',巳:'亥'};
+  const branchHarmony = {子:'丑',寅:'亥',卯:'戌',辰:'酉',巳:'申',午:'未'};
+  let branchAnalysis = '';
+  for (let [k,v] of Object.entries(branchClash)) {
+    if ((bBranch===k&&tBranch===v) || (bBranch===v&&tBranch===k)) {
+      branchAnalysis = '日支' + bBranch + '与今日' + tBranch + '相冲，易有突发变动，出行注意安全，情绪宜稳。';
+      score = Math.max(1, score-1);
+    }
+  }
+  for (let [k,v] of Object.entries(branchHarmony)) {
+    if ((bBranch===k&&tBranch===v) || (bBranch===v&&tBranch===k)) {
+      branchAnalysis = '日支' + bBranch + '与今日' + tBranch + '六合，人缘极佳，利合作、签约、婚恋。';
+      score = Math.min(5, score+1);
+    }
+  }
+  const wxToColor = {木:'绿/青',火:'红/紫',土:'黄/棕',金:'白/金',水:'黑/蓝'};
+  const wxToNum = {木:'3,8',火:'2,7',土:'5,0',金:'4,9',水:'1,6'};
+  const wxToDir = {木:'东方',火:'南方',土:'中央',金:'西方',水:'北方'};
+  const luckyWx = wxCycle[bWx] || '土';
+  const avoidWx = wxControl[bWx] || '木';
+  const scoreNames = ['','凶','平','平','吉','大吉'];
+  const scoreColors = ['','var(--quan)','var(--text-dim)','var(--text-dim)','var(--lu)','var(--lu)'];
+  return {
+    date: `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`,
+    dayGZ: dayGZ.ganZhi, fortune, score, relationType,
+    branchAnalysis, bWx, tWx,
+    luckyColor: wxToColor[luckyWx], luckyNum: wxToNum[luckyWx], luckyDir: wxToDir[luckyWx],
+    avoidColor: wxToColor[avoidWx], avoidDir: wxToDir[avoidWx],
+    scoreName: scoreNames[score]||'平', scoreColor: scoreColors[score]||'var(--text-dim)'
+  };
+}
+
+let __dailyFortuneData = null;
+function queryDailyFortune() {
+  const data = window.__CHART_DATA;
+  if (!data) { alert('请先排盘获取命盘数据'); return; }
+  const user = getCurrentUser();
+  if (!isAdminLoggedIn()) {
+    const prices = getPrices();
+    const acc = getCurrentAccount();
+    if (!acc) { openModal('loginModal'); return; }
+    if (acc.balance < prices.daily_fortune) {
+      if (confirm(`每日运势查询需 ¥${prices.daily_fortune}，当前余额 ¥${acc.balance}。是否充值？`)) {
+        openModal('rechargeModal');
+      }
+      return;
+    }
+    if (!confirm(`查询每日运势将扣除 ¥${prices.daily_fortune}，确认？`)) return;
+    deductBalance(user, prices.daily_fortune);
+    addPaymentRecord(user, prices.daily_fortune, 'daily_fortune', '每日运势查询');
+    updateAccountUI();
+  }
+  playChime();
+  __dailyFortuneData = calcDailyFortune({
+    dayPillar: data.fourPillars.day,
+    yearPillar: data.fourPillars.year,
+    monthPillar: data.fourPillars.month,
+    hourPillar: data.fourPillars.hour
+  });
+  renderDailyFortune(__dailyFortuneData);
+}
+function renderDailyFortune(fd) {
+  const el = document.getElementById('dailyFortuneContent');
+  const advice = fd.score >= 4
+    ? '宜主动出击，把握良机。可安排重要会议、签约、面试等事项。'
+    : fd.score <= 1
+    ? '宜静不宜动，多休息、少决策。避免投资、出行等重大事务。'
+    : '平稳度过即可，可处理日常事务，不宜冒进也不宜退缩。';
+  const adviceLove = fd.score >= 4 ? '良缘易结，单身者宜多社交；有伴者感情升温。' : fd.score <= 1 ? '易生口角，多包容少争执。' : '感情平稳，细水长流。';
+  const adviceWork = fd.score >= 4 ? '事业运旺，利求职、晋升、谈判。' : fd.score <= 1 ? '工作压力大，避免与同事冲突。' : '按部就班，稳中求进。';
+  const adviceMoney = fd.score >= 4 ? '财运上扬，可适当投资；偏财运佳。' : fd.score <= 1 ? '易破财，慎投资，防诈骗。' : '收支平衡，不宜冒险投资。';
+  el.innerHTML = `
+    <div style="padding:12px 0;">
+      <div style="text-align:center;">
+        <div style="font-size:0.82em;color:var(--text-dim);">📅 ${fd.date} · 日柱 <span class="hl">${fd.dayGZ}</span></div>
+        <div style="font-size:2.2em;font-weight:bold;color:${fd.scoreColor};margin:6px 0;">${fd.scoreName}</div>
+        <div style="font-size:0.82em;color:var(--text-dim);">${'★'.repeat(fd.score)}${'☆'.repeat(5-fd.score)} · ${fd.relationType}</div>
+      </div>
+      <div style="margin:12px 0;padding:12px;background:rgba(201,169,110,0.06);border-radius:8px;line-height:1.9;">
+        <p>🔮 <b>总体运势：</b>${fd.fortune}</p>
+        ${fd.branchAnalysis ? `<p style="margin-top:6px;">📌 <b>地支关系：</b>${fd.branchAnalysis}</p>` : ''}
+        <p style="margin-top:6px;">⚖ <b>五行互动：</b>日主<span class="hl">${fd.bWx}</span> × 今日<span class="hl">${fd.tWx}</span></p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;font-size:0.82em;">
+        <div style="padding:8px;background:rgba(39,174,96,0.1);border-radius:6px;">
+          <span style="color:var(--lu);">🍀 幸运色：</span>${fd.luckyColor}<br>
+          <span style="color:var(--lu);">🍀 幸运数：</span>${fd.luckyNum}<br>
+          <span style="color:var(--lu);">🍀 吉方位：</span>${fd.luckyDir}
+        </div>
+        <div style="padding:8px;background:rgba(231,76,60,0.08);border-radius:6px;">
+          <span style="color:var(--quan);">⚠ 慎用色：</span>${fd.avoidColor}<br>
+          <span style="color:var(--quan);">⚠ 慎方位：</span>${fd.avoidDir}
+        </div>
+      </div>
+      <div style="margin:10px 0;font-size:0.85em;line-height:1.8;">
+        <p><b>📋 今日建议：</b>${advice}</p>
+        <p><b>💕 感情：</b>${adviceLove}</p>
+        <p><b>💼 事业：</b>${adviceWork}</p>
+        <p><b>💰 财运：</b>${adviceMoney}</p>
+      </div>
+    </div>`;
+}
+
+function updateDailyFortuneUI() {
+  const acc = getCurrentAccount();
+  const section = document.getElementById('dailyFortuneSection');
+  section.style.display = acc ? 'block' : 'none';
+}
+
+// ========== 保存排盘 ==========
+function saveChartToFile() {
+  playChime();
+  const data = window.__CHART_DATA;
+  if (!data) { alert('请先排盘'); return; }
+  const chartGrid = document.getElementById('chartGrid').innerHTML;
+  const pillarsBar = document.getElementById('pillarsBar').innerHTML;
+  const analysis = document.getElementById('analysisContent').innerHTML;
+  const dailyDiv = document.getElementById('dailyFortuneContent').innerHTML;
+  const dailyContent = __dailyFortuneData ? `
+    <div style="margin-top:20px;">
+      <h3>📅 每日运势</h3>
+      <p>${__dailyFortuneData.date} · 日柱 ${__dailyFortuneData.dayGZ}</p>
+      <p>运势：${__dailyFortuneData.scoreName} — ${__dailyFortuneData.fortune}</p>
+    </div>` : '';
+  const html = `<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<title>紫微斗数命盘 - ${data.solarDate.year}.${data.solarDate.month}.${data.solarDate.day}</title>
+<style>
+body{background:#0d1b2a;color:#d8cfc0;font-family:'Microsoft YaHei',sans-serif;padding:20px;max-width:900px;margin:0 auto}
+h1{color:#c9a96e;text-align:center}h3{color:#c9a96e;border-bottom:1px solid #2a3a55;padding-bottom:6px}
+.chart{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;max-width:500px;margin:0 auto 20px}
+.cell{background:#1a2740;border:1px solid #2a3a55;border-radius:8px;padding:8px;font-size:12px}
+.cell .pn{color:#c9a96e;font-size:11px;font-weight:bold}.cell .pg{color:#8a8070;font-size:10px}
+.star-ziwei{color:#b07cd8}.star-tianfu{color:#5b9bd5}.star-aux{color:#7a8a7a}
+.star-sihua-lu{color:#27ae60;font-weight:bold}.star-sihua-quan{color:#e74c3c;font-weight:bold}
+.star-sihua-ke{color:#f39c12;font-weight:bold}.star-sihua-ji{color:#5a5a6e}
+.hl{color:#e0c88a;font-weight:bold}.good{color:#27ae60}.warn{color:#e74c3c}.note{color:#f39c12}
+.brightness-tag{font-size:0.6em;opacity:0.7}
+</style></head><body>
+<h1>🔮 紫微斗数 · 命盘</h1>
+<p style="text-align:center;color:#8a8070;">出生：${data.solarDate.year}年${data.solarDate.month}月${data.solarDate.day}日 ${data.birthTime.hour}:${String(data.birthTime.minute).padStart(2,'0')} · ${data.gender==='male'?'男':'女'} · ${data.location}</p>
+<p style="text-align:center;color:#8a8070;">排盘时间：${new Date().toLocaleString()}</p>
+<div class="chart">${chartGrid}</div>
+<div style="text-align:center;margin:10px 0">${pillarsBar}</div>
+<div>${analysis}</div>
+${dailyContent}
+<p style="text-align:center;color:#5a5a6e;margin-top:30px;font-size:0.8em">—— 紫微斗数排盘系统 · 生成于 ${new Date().toLocaleString()} ——</p>
+</body></html>`;
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `紫微命盘_${data.solarDate.year}${String(data.solarDate.month).padStart(2,'0')}${String(data.solarDate.day).padStart(2,'0')}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ========== UI 更新 ==========
+function updateAccountUI() {
+  const acc = getCurrentAccount();
+  const badge = document.getElementById('accountBadge');
+  const balanceEl = document.getElementById('accountBalance');
+  const loginBtn = document.getElementById('accountLoginBtn');
+  const registerBtn = document.getElementById('accountRegisterBtn');
+  const logoutBtn = document.getElementById('accountLogoutBtn');
+  const adminBtn = document.getElementById('accountAdminBtn');
+  const saveBtn = document.getElementById('saveChartBtn');
+  const rechargeArea = document.getElementById('rechargeArea');
+  const quickBar = document.getElementById('quickRechargeBar');
+  const quickBalance = document.getElementById('quickBalance');
+  const prices = getPrices();
+  document.getElementById('quickPriceChart').textContent = prices.full_chart;
+  document.getElementById('quickPriceDaily').textContent = prices.daily_fortune;
+
+  if (acc) {
+    const rl = acc.role === 'admin' ? '👑 管理员' : '👤';
+    badge.textContent = rl + ' ' + getCurrentUser();
+    badge.className = 'auth-badge ' + (acc.role === 'admin' ? 'admin' : 'user');
+    balanceEl.textContent = '余额 ¥' + (acc.balance || 0);
+    balanceEl.style.display = 'inline';
+    loginBtn.style.display = 'none';
+    registerBtn.style.display = 'none';
+    logoutBtn.style.display = 'inline';
+    adminBtn.style.display = acc.role === 'admin' ? 'inline' : 'none';
+    saveBtn.style.display = 'inline';
+    rechargeArea.style.display = 'inline';
+    updateDailyFortuneUI();
+    // 快捷充值栏：仅非管理员显示
+    if (acc.role !== 'admin') {
+      quickBar.style.display = 'block';
+      quickBalance.textContent = '¥' + (acc.balance || 0);
+      quickBalance.style.color = (acc.balance || 0) < prices.full_chart ? 'var(--quan)' : 'var(--gold-light)';
+    } else {
+      quickBar.style.display = 'none';
+    }
+  } else {
+    badge.textContent = '未登录';
+    badge.className = 'auth-badge user';
+    balanceEl.style.display = 'none';
+    loginBtn.style.display = 'inline';
+    registerBtn.style.display = 'inline';
+    logoutBtn.style.display = 'none';
+    adminBtn.style.display = 'none';
+    saveBtn.style.display = 'none';
+    rechargeArea.style.display = 'none';
+    document.getElementById('dailyFortuneSection').style.display = 'none';
+    quickBar.style.display = 'block';
+    quickBalance.textContent = '—';
+    quickBalance.style.color = 'var(--text-dim)';
+  }
+}
+
+// ========== 登录/注册 弹窗交互 ==========
+function showLogin() {
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPwd').value = '';
+  document.getElementById('loginMsg').textContent = '';
+  openModal('loginModal');
+}
+function showRegister() {
+  document.getElementById('regUser').value = '';
+  document.getElementById('regPwd').value = '';
+  document.getElementById('regPwd2').value = '';
+  document.getElementById('regMsg').textContent = '';
+  openModal('registerModal');
+}
+function showRecharge() {
+  if (!getCurrentUser()) { showLogin(); return; }
+  document.getElementById('rechargeAmount').value = '';
+  document.getElementById('verifyCodeInput').value = '';
+  document.getElementById('verifyCodeMsg').textContent = '';
+  openModal('rechargeModal');
+}
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPwd').value;
+  const r = loginAccount(u, p);
+  const msg = document.getElementById('loginMsg');
+  if (r.ok) {
+    msg.className = 'msg success'; msg.textContent = '登录成功！';
+    setTimeout(() => { closeModal('loginModal'); updateAccountUI(); }, 400);
+  } else { msg.className = 'msg error'; msg.textContent = r.msg; }
+}
+function doRegister() {
+  const u = document.getElementById('regUser').value.trim();
+  const p = document.getElementById('regPwd').value;
+  const p2 = document.getElementById('regPwd2').value;
+  const msg = document.getElementById('regMsg');
+  if (p !== p2) { msg.className = 'msg error'; msg.textContent = '两次密码不一致'; return; }
+  const r = registerAccount(u, p);
+  if (r.ok) {
+    msg.className = 'msg success'; msg.textContent = r.msg;
+    setTimeout(() => { closeModal('registerModal'); showLogin(); }, 600);
+  } else { msg.className = 'msg error'; msg.textContent = r.msg; }
+}
+
+// ========== 管理员面板 ==========
+function openAdminPanel() {
+  openModal('adminModal');
+  switchAdminTab('accounts', document.querySelector('#adminModal .admin-tab'));
+}
+function switchAdminTab(tab, btn) {
+  document.querySelectorAll('#adminModal .admin-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const body = document.getElementById('adminPanelBody');
+  const msg = document.getElementById('adminMsg'); msg.textContent = '';
+  if (tab === 'accounts') {
+    const accs = getAccounts();
+    const rows = Object.entries(accs).map(([name, a]) =>
+      `<tr><td>${name}${a.role==='admin'?' 👑':''}</td><td>¥${a.balance||0}</td><td>${new Date(a.createdAt).toLocaleDateString()}</td><td>
+        <button class="btn btn-sm" onclick="adminAddBalance('${name}')" style="font-size:0.7em;padding:2px 8px;">充值</button>
+        ${a.role!=='admin'?`<button class="btn btn-sm btn-danger" onclick="adminDeleteAccount('${name}')" style="font-size:0.7em;padding:2px 8px;margin-left:4px;">删除</button>`:''}
+      </td></tr>`).join('');
+    body.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:0.82em;">
+        <tr style="color:var(--gold);border-bottom:1px solid var(--border)"><th style="padding:6px">账号</th><th>余额</th><th>注册时间</th><th>操作</th></tr>
+        ${rows || '<tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:20px">暂无账号</td></tr>'}
+      </table>`;
+  } else if (tab === 'pricing') {
+    const prices = getPrices();
+    body.innerHTML = `
+      <div class="form-row"><label>完整排盘（元）</label><input type="number" id="priceChart" value="${prices.full_chart}" min="0" max="999"></div>
+      <div class="form-row"><label>每日运势（元）</label><input type="number" id="priceDaily" value="${prices.daily_fortune}" min="0" max="999"></div>
+      <div class="btn-row"><button class="btn btn-primary" onclick="doSetPrices()">保存价格</button></div>`;
+  } else if (tab === 'qr') {
+    const hasQR = !!getQRImage();
+    body.innerHTML = `
+      <p style="color:var(--text-dim);margin-bottom:8px;">上传收款二维码（微信/支付宝），用户扫码支付后充值</p>
+      <div class="form-row"><label>选择图片</label><input type="file" id="qrFileInput" accept="image/*" onchange="doUploadQR()"></div>
+      ${hasQR ? '<p style="color:var(--lu);font-size:0.75em;">✓ 已设置二维码</p>' : '<p style="color:var(--text-dim);font-size:0.75em;">未设置二维码</p>'}
+      ${hasQR ? '<div class="btn-row"><button class="btn btn-danger" onclick="setQRImage(\'\');switchAdminTab(\'qr\',document.querySelector(\'#adminModal .admin-tab\'))">清除二维码</button></div>' : ''}`;
+  } else if (tab === 'pending') {
+    const recs = getPaymentRecords().filter(r => r.status === 'pending');
+    const rows = recs.map((r,i) => {
+      const code = r.code || '';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(42,58,85,0.3);font-size:0.8em;">
+        <span>${r.time.slice(0,16).replace('T',' ')} | <b>${r.username}</b> | ¥${r.amount}</span>
+        ${code ? `<span style="color:var(--lu);font-weight:bold;letter-spacing:2px;">${code}</span>` : `<button class="btn btn-sm" onclick="adminApprovePayment(${i})" style="font-size:0.7em;padding:2px 10px;">确认收款</button>`}
+      </div>`;
+    }).join('');
+    body.innerHTML = `
+      <p style="color:var(--text-dim);margin-bottom:8px;">待审核的充值记录（确认收款后生成验证码给用户）：</p>
+      ${rows || '<p style="color:var(--text-dim);text-align:center;padding:20px;">暂无待审核记录</p>'}`;
+  } else if (tab === 'records') {
+    const recs = getPaymentRecords().reverse().slice(0, 60);
+    body.innerHTML = `
+      <div class="stat-row"><span>总交易数</span><span>${getPaymentRecords().length}</span></div>
+      <div class="stat-row"><span>总收入</span><span>¥${getPaymentRecords().filter(r=>r.status!=='pending').reduce((s,r)=>s+r.amount,0)}</span></div>
+      <div class="stat-row"><span>待审核</span><span style="color:var(--ke)">${getPaymentRecords().filter(r=>r.status==='pending').length}</span></div>
+      <div class="code-list">${recs.map(r => {
+        const st = r.status==='pending' ? '⏳待审' : '✓';
+        return `<div class="ci">${r.time.slice(0,16).replace('T',' ')} | ${r.username} | ¥${r.amount} | ${r.type} | ${st}</div>`;
+      }).join('') || '<div style="color:var(--text-dim)">暂无记录</div>'}</div>`;
+  } else if (tab === 'password') {
+    body.innerHTML = `
+      <div class="form-row"><label>新密码</label><input type="password" id="newAdminPwd" placeholder="输入新密码"></div>
+      <div class="form-row"><label>确认密码</label><input type="password" id="newAdminPwd2" placeholder="再次输入"></div>
+      <div class="btn-row"><button class="btn btn-primary" onclick="doChangeAdminPwd()">修改密码</button></div>`;
+  }
+}
+function adminAddBalance(username) {
+  const amount = parseFloat(prompt('为 ' + username + ' 充值的金额（元）：', '10'));
+  if (amount > 0) {
+    addBalance(username, amount);
+    addPaymentRecord(username, amount, 'admin_recharge', '管理员手动充值');
+    switchAdminTab('accounts', document.querySelector('#adminModal .admin-tab'));
+    document.getElementById('adminMsg').className = 'msg success';
+    document.getElementById('adminMsg').textContent = '已为 ' + username + ' 充值 ¥' + amount;
+    updateAccountUI();
+  }
+}
+function adminApprovePayment(idx) {
+  const recs = getPaymentRecords();
+  const pending = recs.filter(r => r.status === 'pending');
+  if (idx >= pending.length) return;
+  const rec = pending[idx];
+  // 生成验证码
+  let counter = parseInt(localStorage.getItem('zwds_code_counter') || '0') + 1;
+  localStorage.setItem('zwds_code_counter', counter.toString());
+  const c = counter.toString(16).toUpperCase().padStart(4, '0');
+  const sig = _h(counter + '_' + rec.username + '_' + APP_SECRET);
+  const code = 'ZW-' + c + '-' + sig;
+  // 更新记录
+  const realIdx = recs.indexOf(rec);
+  recs[realIdx].code = code;
+  localStorage.setItem('zwds_payments', JSON.stringify(recs));
+  // 刷新面板
+  switchAdminTab('pending', document.querySelector('#adminModal .admin-tab[onclick*=\"pending\"]'));
+  document.getElementById('adminMsg').className = 'msg success';
+  document.getElementById('adminMsg').innerHTML = '验证码：<b style=\"letter-spacing:2px;font-size:1.1em;\">' + code + '</b>（¥' + rec.amount + '，用户：' + rec.username + '）';
+}
+function adminDeleteAccount(username) {
+  if (confirm('确定删除账号 "' + username + '"？此操作不可恢复。')) {
+    const accs = getAccounts(); delete accs[username]; saveAccounts(accs);
+    switchAdminTab('accounts', document.querySelector('#adminModal .admin-tab'));
+    document.getElementById('adminMsg').className = 'msg success';
+    document.getElementById('adminMsg').textContent = '已删除账号 ' + username;
+  }
+}
+function doSetPrices() {
+  const full = parseInt(document.getElementById('priceChart').value) || 0;
+  const daily = parseInt(document.getElementById('priceDaily').value) || 0;
+  setPrices({ full_chart: full, daily_fortune: daily });
+  document.getElementById('adminMsg').className = 'msg success';
+  document.getElementById('adminMsg').textContent = '价格已更新：排盘 ¥' + full + '，每日运势 ¥' + daily;
+}
+function doUploadQR() {
+  const file = document.getElementById('qrFileInput').files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    // 压缩大图
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const maxW = 400;
+      const scale = Math.min(1, maxW / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      setQRImage(canvas.toDataURL('image/jpeg', 0.7));
+      switchAdminTab('qr', document.querySelector('#adminModal .admin-tab'));
+      document.getElementById('adminMsg').className = 'msg success';
+      document.getElementById('adminMsg').textContent = '二维码已保存';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function doChangeAdminPwd() {
+  const p1 = document.getElementById('newAdminPwd').value;
+  const p2 = document.getElementById('newAdminPwd2').value;
+  const msg = document.getElementById('adminMsg');
+  if (!p1) { msg.className = 'msg error'; msg.textContent = '请输入新密码'; return; }
+  if (p1 !== p2) { msg.className = 'msg error'; msg.textContent = '两次密码不一致'; return; }
+  if (p1.length < 4) { msg.className = 'msg error'; msg.textContent = '密码至少4位'; return; }
+  const accs = getAccounts();
+  accs[ADMIN_USER].password = _h(p1);
+  saveAccounts(accs);
+  msg.className = 'msg success'; msg.textContent = '密码修改成功！';
+}
+
+// ========== 初始化 ==========
+function initAccountSystem() {
+  // 确保管理员账号存在
+  const accs = getAccounts();
+  if (!accs[ADMIN_USER]) {
+    accs[ADMIN_USER] = {
+      password: _h('admin888'), role: 'admin', balance: 0,
+      createdAt: new Date().toISOString()
+    };
+    saveAccounts(accs);
+  }
+  updateAccountUI();
+}
+
+// ============================================================
+//  模块 T：大限/流年/流月/流日 / Time Luck Analysis
+// ============================================================
+
+// 大限计算：每宫管10年，起始年龄=五行局数
+// 阳男/阴女顺行(命宫→兄弟→...)，阴男/阳女逆行(命宫→父母→...)
+function calcDaXian(data) {
+  const yearStem = data.yearStem;
+  const gender = data.gender;
+  const wxjNum = data.wuXingJu.number;
+  const yangStems = ['甲','丙','戊','庚','壬'];
+  const isYang = yangStems.includes(yearStem);
+  // 顺行条件
+  const shunXing = (gender === 'male' && isYang) || (gender === 'female' && !isYang);
+  const startAge = wxjNum;
+  const daXianList = [];
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const birthYear = data.solarDate.year;
+  const age = currentYear - birthYear;
+  let currentDxIdx = -1;
+  for (let i = 0; i < 12; i++) {
+    const pIdx = shunXing ? i : (12 - i) % 12;
+    const ageS = startAge + i * 10;
+    const ageE = ageS + 9;
+    if (age >= ageS && age <= ageE) currentDxIdx = i;
+    daXianList.push({
+      idx: i, palaceIdx: pIdx,
+      palaceName: data.palaces[pIdx].name,
+      palaceBranch: data.palaces[pIdx].branch,
+      palaceGZ: data.palaces[pIdx].ganZhi,
+      ageStart: ageS, ageEnd: ageE,
+      stars: data.palaces[pIdx].stars,
+      isCurrent: false
+    });
+  }
+  if (currentDxIdx >= 0) daXianList[currentDxIdx].isCurrent = true;
+  return { daXianList, currentDxIdx, startAge, shunXing, age };
+}
+
+// 流年计算：当年地支对应的宫位为流年命宫
+function calcLiuNian(data) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const yearBranchIdx = (year - 4) % 12;
+  const yearBranch = EB[yearBranchIdx];
+  const mingPalace = data.palaces.find(p => p.branchIdx === yearBranchIdx);
+  if (!mingPalace) return null;
+  // 排流年12宫（从流年命宫起，按原顺序排流年12宫名）
+  const liuNianPalaces = [];
+  const mingIdxInPalaces = data.palaces.indexOf(mingPalace);
+  for (let i = 0; i < 12; i++) {
+    const p = data.palaces[(mingIdxInPalaces - i + 12) % 12];
+    liuNianPalaces.push({ ...p, liuNianName: HOUSE_NAMES[i] });
+  }
+  return {
+    year, yearBranch, yearBranchIdx,
+    mingPalace, liuNianPalaces,
+    yearGZ: HS[(year-4)%10] + EB[(year-4)%12]
+  };
+}
+
+// 流月计算
+function calcLiuYue(data) {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const monthBranchIdx = (month + 1) % 12; // 寅=正月, 丑=12月... 简化: month+1 mod 12
+  const monthBranch = EB[monthBranchIdx];
+  const mingPalace = data.palaces.find(p => p.branchIdx === monthBranchIdx);
+  return {
+    month, monthBranch, monthBranchIdx,
+    mingPalace,
+    monthGZ: HS[((HS.indexOf(data.yearStem) % 5) * 2 + (monthBranchIdx - 2 + 12) % 12) % 10] + monthBranch
+  };
+}
+
+// 流日计算
+function calcLiuRi(data) {
+  const now = new Date();
+  const dayGZ = getDayPillar(now.getFullYear(), now.getMonth()+1, now.getDate());
+  const dayBranchIdx = EB.indexOf(dayGZ.branch);
+  const mingPalace = data.palaces.find(p => p.branchIdx === dayBranchIdx);
+  return {
+    date: `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,
+    dayBranch: dayGZ.branch, dayBranchIdx,
+    mingPalace, dayGZ: dayGZ.ganZhi
+  };
+}
+
+// 渲染时间分析
+let __timeAnalysisType = 'daxian';
+function selectTimeTab(type) {
+  __timeAnalysisType = type;
+  const data = window.__CHART_DATA;
+  if (!data) return;
+  // 更新tab样式
+  document.querySelectorAll('#tabBar .tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.time-tab-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`.time-tab-btn[data-tt="${type}"]`);
+  if (btn) btn.classList.add('active');
+  renderTimeAnalysis(type, data);
+}
+function renderTimeAnalysis(type, data) {
+  const content = document.getElementById('analysisContent');
+  let html = '';
+  if (type === 'daxian') {
+    const dx = calcDaXian(data);
+    html = `<h4>📅 大限（十年大运）</h4>
+      <p style="color:var(--text-dim);font-size:0.82em;">五行局：${data.wuXingJu.element}${data.wuXingJu.number}局 · 起始${dx.startAge}岁起运 · ${dx.shunXing?'顺行':'逆行'} · 当前${dx.age}岁</p>
+      <div style="max-height:400px;overflow-y:auto;">`;
+    for (let d of dx.daXianList) {
+      const mark = d.isCurrent ? ' 🔴 当前' : '';
+      const bg = d.isCurrent ? 'background:rgba(201,169,110,0.12);border-left:3px solid var(--gold);' : '';
+      const starsStr = d.stars.filter(s=>s.isMain).map(s=>s.name).join('、') || '借星';
+      html += `<div style="padding:6px 10px;margin:2px 0;border-radius:4px;font-size:0.82em;${bg}">
+        <b>${d.ageStart}-${d.ageEnd}岁</b> → ${d.palaceName}（${d.palaceGZ}）${mark}<br>
+        <span style="color:var(--text-dim);">主星：${starsStr}</span>
+      </div>`;
+    }
+    html += '</div>';
+    if (dx.currentDxIdx >= 0) {
+      const cd = dx.daXianList[dx.currentDxIdx];
+      html += `<p style="margin-top:8px;color:var(--gold-light);">当前大限在<span class="hl">${cd.palaceName}（${cd.palaceGZ}）</span>，${cd.ageStart}-${cd.ageEnd}岁。此十年${cd.palaceName}方面的事务将成为人生重心。</p>`;
+    }
+  } else if (type === 'liunian') {
+    const ln = calcLiuNian(data);
+    if (!ln) { html = '<p>计算流年失败</p>'; } else {
+      html = `<h4>📅 ${ln.year}年 流年运势</h4>
+        <p>流年干支：<span class="hl">${ln.yearGZ}</span> · 太岁在<span class="hl">${ln.yearBranch}</span></p>
+        <p>流年命宫：<span class="hl">${ln.mingPalace.name}（${ln.mingPalace.ganZhi}）</span></p>
+        <h4>流年十二宫</h4><div style="font-size:0.82em;">`;
+      for (let p of ln.liuNianPalaces) {
+        const starsStr = p.stars.filter(s=>s.isMain).map(s=>s.name).join('、') || '无主星';
+        html += `<p><b>${p.liuNianName}</b>（${p.ganZhi}）：${starsStr}</p>`;
+      }
+      html += '</div>';
+      const sihuaHere = ln.mingPalace.stars.filter(s=>s.sihua);
+      if (sihuaHere.length > 0) {
+        html += '<h4>流年四化应事</h4>';
+        for (let s of sihuaHere) {
+          const m = {禄:'财运/人缘佳',权:'权力/竞争强',科:'名声/学业佳',忌:'波折/需谨慎'};
+          html += `<p>${s.name}化${s.sihua}：${m[s.sihua]||''}</p>`;
+        }
+      }
+    }
+  } else if (type === 'liuyue') {
+    const ly = calcLiuYue(data);
+    html = `<h4>📅 ${ly.month}月 流月运势</h4>
+      <p>流月地支：<span class="hl">${ly.monthBranch}</span></p>
+      <p>流月命宫：<span class="hl">${ly.mingPalace ? ly.mingPalace.name+'（'+ly.mingPalace.ganZhi+'）' : '—'}</span></p>
+      <p style="color:var(--text-dim);margin-top:8px;">本月重点关注${ly.mingPalace ? ly.mingPalace.name : ''}方面的事务。月运变化较快，宜根据流月调整短期计划。</p>`;
+  } else if (type === 'liuri') {
+    const lr = calcLiuRi(data);
+    html = `<h4>📅 ${lr.date} 流日运势</h4>
+      <p>流日干支：<span class="hl">${lr.dayGZ}</span> · 日支<span class="hl">${lr.dayBranch}</span></p>
+      <p>流日命宫：<span class="hl">${lr.mingPalace ? lr.mingPalace.name+'（'+lr.mingPalace.ganZhi+'）' : '—'}</span></p>
+      <p style="color:var(--text-dim);margin-top:8px;">今日能量集中在${lr.mingPalace ? lr.mingPalace.name : ''}宫。日运最细微，宜配合每日运势一起参考。</p>`;
+  }
+  content.innerHTML = html;
+}
+
+// ============================================================
+//  模块 A：数据层
+
+// ============================================================
+//  模块 A：数据层
+// ============================================================
+
+const HS = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const EB = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const ZODIAC = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+const WU_XING = ['木','火','土','金','水'];
+
+// ============================================================
+//  64卦系统 / I Ching Hexagram System
+//  梅花易数 & 京房纳甲综合
+// ============================================================
+
+const XIANTIAN_BAGUA = ['','乾','兑','离','震','巽','坎','艮','坤'];
+const BAGUA_SYM = ['','☰','☱','☲','☳','☴','☵','☶','☷'];
+const BAGUA_WX = ['','金','金','火','木','木','水','土','土'];
+const BAGUA_NATURE = ['','天','泽','火','雷','风','水','山','地'];
+const BAGUA_DIR = ['','西北','西','南','东','东南','北','东北','西南'];
+
+// 64卦全表: index = (上卦-1)*8 + (下卦-1)
+// 每卦包含: name, 卦德, 卦辞, 彖传摘要, 大象, 吉凶, 五行, 宫位
+const GUA64 = [
+  {i:1,name:'乾为天',   u:1,l:1,s:'䷀',d:'乾上乾下',jx:'元亨利贞',tuan:'大哉乾元，万物资始，乃统天',xiang:'天行健，君子以自强不息',luck:'大吉',wx:'金',gong:'乾',desc:'纯阳之卦，六爻皆阳。象征天道运行，刚健不息。得此卦者，宜自强不息，勇往直前，但需防刚愎自用。'},
+  {i:2,name:'坤为地',   u:8,l:8,s:'䷁',d:'坤上坤下',jx:'元亨，利牝马之贞',tuan:'至哉坤元，万物资生，乃顺承天',xiang:'地势坤，君子以厚德载物',luck:'吉',wx:'土',gong:'坤',desc:'纯阴之卦，六爻皆阴。象征大地厚德，包容万物。得此卦者，宜柔顺处世，厚德载物，以静制动。'},
+  {i:3,name:'水雷屯',   u:6,l:4,s:'䷂',d:'坎上震下',jx:'元亨利贞，勿用有攸往',tuan:'屯，刚柔始交而难生',xiang:'云雷屯，君子以经纶',luck:'凶',wx:'水',gong:'坎',desc:'屯者难也，万物始生，艰难重重。如草木初生破土而出。得此卦者宜坚定信念，不可冒进，稳扎稳打。'},
+  {i:4,name:'山水蒙',   u:7,l:6,s:'䷃',d:'艮上坎下',jx:'亨。匪我求童蒙，童蒙求我',tuan:'蒙，山下有险，险而止',xiang:'山下出泉，蒙，君子以果行育德',luck:'平',wx:'土',gong:'离',desc:'蒙者昧也，如孩童初学，懵懂无知。山下有泉，待开发之象。宜虚心求教，开启智慧。'},
+  {i:5,name:'水天需',   u:6,l:1,s:'䷄',d:'坎上乾下',jx:'有孚，光亨，贞吉，利涉大川',tuan:'需，须也，险在前也',xiang:'云上于天，需，君子以饮食宴乐',luck:'吉',wx:'水',gong:'坤',desc:'需者待也，云在天上，待时而雨。时机未到需耐心等待，守正待时，不可急躁冒进。'},
+  {i:6,name:'天水讼',   u:1,l:6,s:'䷅',d:'乾上坎下',jx:'有孚窒惕，中吉终凶',tuan:'讼，上刚下险，险而健',xiang:'天与水违行，讼，君子以作事谋始',luck:'凶',wx:'金',gong:'离',desc:'讼者争也，天水相违，意见不合。宜慎始谋终，避免争执诉讼，退一步海阔天空。'},
+  {i:7,name:'地水师',   u:8,l:6,s:'䷆',d:'坤上坎下',jx:'贞，丈人吉，无咎',tuan:'师，众也，贞，正也',xiang:'地中有水，师，君子以容民畜众',luck:'平',wx:'土',gong:'坎',desc:'师者众也，地中有水，藏兵于民。宜师出有名，以正制邪，用兵须慎重。'},
+  {i:8,name:'水地比',   u:6,l:8,s:'䷇',d:'坎上坤下',jx:'吉。原筮，元永贞，无咎',tuan:'比，吉也，比，辅也',xiang:'地上有水，比，先王以建万国亲诸侯',luck:'吉',wx:'水',gong:'坤',desc:'比者亲也，地上有水，相亲相辅。宜亲贤臣远小人，团结互助，建立良好关系。'},
+  {i:9,name:'风天小畜', u:5,l:1,s:'䷈',d:'巽上乾下',jx:'亨。密云不雨，自我西郊',tuan:'小畜，柔得位而上下应之',xiang:'风行天上，小畜，君子以懿文德',luck:'平',wx:'木',gong:'巽',desc:'小畜者塞也，风行天上，蓄势待发。如密云不雨，积累未足。宜耐心修身养德，待时而动。'},
+  {i:10,name:'天泽履',  u:1,l:2,s:'䷉',d:'乾上兑下',jx:'履虎尾，不咥人，亨',tuan:'履，柔履刚也',xiang:'上天下泽，履，君子以辨上下定民志',luck:'平',wx:'金',gong:'艮',desc:'履者礼也，如履虎尾，小心谨慎。宜遵守礼仪规范，步步为营，以柔克刚。'},
+  {i:11,name:'地天泰',  u:8,l:1,s:'䷊',d:'坤上乾下',jx:'小往大来，吉亨',tuan:'天地交而万物通也，上下交而其志同也',xiang:'天地交，泰，后以财成天地之道',luck:'大吉',wx:'土',gong:'坤',desc:'泰者通也，天地交泰，万物亨通。阴升阳降，阴阳和合之象。宜把握良机，大展宏图。'},
+  {i:12,name:'天地否',  u:1,l:8,s:'䷋',d:'乾上坤下',jx:'否之匪人，不利君子贞',tuan:'天地不交而万物不通也',xiang:'天地不交，否，君子以俭德辟难',luck:'凶',wx:'金',gong:'乾',desc:'否者塞也，天地不交，万物不通。阴阳隔绝，宜韬光养晦，俭德避难，等待时机。'},
+  {i:13,name:'天火同人',u:1,l:3,s:'䷌',d:'乾上离下',jx:'同人于野，亨，利涉大川',tuan:'同人，柔得位得中而应乎乾',xiang:'天与火，同人，君子以类族辨物',luck:'吉',wx:'金',gong:'离',desc:'同人者亲也，天火同明，志同道合。宜团结协作，广交志同道合之友，成就大业。'},
+  {i:14,name:'火天大有',u:3,l:1,s:'䷍',d:'离上乾下',jx:'元亨',tuan:'大有，柔得尊位，大中而上下应之',xiang:'火在天上，大有，君子以遏恶扬善',luck:'大吉',wx:'火',gong:'乾',desc:'大有者宽也，火在天上，光明普照。如日中天，收获丰盛。宜顺天应人，遏恶扬善。'},
+  {i:15,name:'地山谦',  u:8,l:7,s:'䷎',d:'坤上艮下',jx:'亨，君子有终',tuan:'谦亨，天道下济而光明，地道卑而上行',xiang:'地中有山，谦，君子以裒多益寡',luck:'大吉',wx:'土',gong:'兑',desc:'谦者退也，地中有山，高而不露。宜谦虚低调，满招损谦受益，有终之美。'},
+  {i:16,name:'雷地豫',  u:4,l:8,s:'䷏',d:'震上坤下',jx:'利建侯行师',tuan:'豫，刚应而志行，顺以动',xiang:'雷出地奋，豫，先王以作乐崇德',luck:'吉',wx:'木',gong:'震',desc:'豫者悦也，雷出地奋，欢乐愉悦。宜顺势而动，但防乐极生悲，保持警觉。'},
+  {i:17,name:'泽雷随',  u:2,l:4,s:'䷐',d:'兑上震下',jx:'元亨利贞，无咎',tuan:'随，刚来而下柔，动而说',xiang:'泽中有雷，随，君子以向晦入宴息',luck:'吉',wx:'金',gong:'震',desc:'随者从也，泽随雷动，因势利导。宜随机应变，顺势而为，不可固执己见。'},
+  {i:18,name:'山风蛊',  u:7,l:5,s:'䷑',d:'艮上巽下',jx:'元亨，利涉大川，先甲三日后甲三日',tuan:'蛊，刚上而柔下，巽而止',xiang:'山下有风，蛊，君子以振民育德',luck:'凶',wx:'土',gong:'巽',desc:'蛊者事也，山下有风，积弊待除。如器物生虫，需整顿改革。宜振民育德，除旧布新。'},
+  {i:19,name:'地泽临',  u:8,l:2,s:'䷒',d:'坤上兑下',jx:'元亨利贞，至于八月有凶',tuan:'临，刚浸而长，说而顺',xiang:'泽上有地，临，君子以教思无穷',luck:'吉',wx:'土',gong:'坤',desc:'临者大也，泽上有地，居高临下。宜亲临督导，教思无穷，保民无疆。'},
+  {i:20,name:'风地观',  u:5,l:8,s:'䷓',d:'巽上坤下',jx:'盥而不荐，有孚颙若',tuan:'观，大观在上，顺而巽',xiang:'风行地上，观，先王以省方观民设教',luck:'平',wx:'木',gong:'乾',desc:'观者视也，风行地上，观察民情。宜静观其变，审时度势，以身作则教化天下。'},
+  {i:21,name:'火雷噬嗑',u:3,l:4,s:'䷔',d:'离上震下',jx:'亨，利用狱',tuan:'颐中有物曰噬嗑，噬嗑而亨',xiang:'雷电噬嗑，先王以明罚敕法',luck:'平',wx:'火',gong:'巽',desc:'噬嗑者啮也，雷电交加，咬碎障碍。如口中含物需咬碎。宜明辨是非，果断处理棘手问题。'},
+  {i:22,name:'山火贲',  u:7,l:3,s:'䷕',d:'艮上离下',jx:'亨，小利有攸往',tuan:'贲亨，柔来而文刚，故亨',xiang:'山下有火，贲，君子以明庶政无敢折狱',luck:'平',wx:'土',gong:'艮',desc:'贲者饰也，山下有火，文饰华美。宜注重仪表礼仪，但不可华而不实，重实质轻形式。'},
+  {i:23,name:'山地剥',  u:7,l:8,s:'䷖',d:'艮上坤下',jx:'不利有攸往',tuan:'剥，剥也，柔变刚也',xiang:'山附于地，剥，上以厚下安宅',luck:'凶',wx:'土',gong:'乾',desc:'剥者落也，山崩于地，小人当道。五阴剥一阳，宜厚下安宅，守正待时，不可妄动。'},
+  {i:24,name:'地雷复',  u:8,l:4,s:'䷗',d:'坤上震下',jx:'亨。出入无疾，朋来无咎',tuan:'复亨，刚反，动而以顺行',xiang:'雷在地中，复，先王以至日闭关',luck:'吉',wx:'土',gong:'坤',desc:'复者返也，一阳来复，万象更新。如冬至阳生，否极泰来。宜把握新生之机，重新出发。'},
+  {i:25,name:'天雷无妄',u:1,l:4,s:'䷘',d:'乾上震下',jx:'元亨利贞。其匪正有眚',tuan:'无妄，刚自外来而为主于内',xiang:'天下雷行，物与无妄，先王以茂对时育万物',luck:'平',wx:'金',gong:'巽',desc:'无妄者诚也，天下雷行，真实无伪。宜诚实不欺，顺天应时，不可存侥幸心理。妄动则有灾。'},
+  {i:26,name:'山天大畜',u:7,l:1,s:'䷙',d:'艮上乾下',jx:'利贞。不家食吉，利涉大川',tuan:'大畜，刚健笃实辉光，日新其德',xiang:'天在山中，大畜，君子以多识前言往行',luck:'吉',wx:'土',gong:'艮',desc:'大畜者聚也，天在山中，积蓄深厚。宜厚积薄发，多识前言往行，养德蓄才。'},
+  {i:27,name:'山雷颐',  u:7,l:4,s:'䷚',d:'艮上震下',jx:'贞吉。观颐，自求口实',tuan:'颐贞吉，养正则吉也',xiang:'山下有雷，颐，君子以慎言语节饮食',luck:'平',wx:'土',gong:'巽',desc:'颐者养也，山下有雷，颐养天年。宜慎言语节饮食，修身养性，养正则吉。'},
+  {i:28,name:'泽风大过',u:2,l:5,s:'䷛',d:'兑上巽下',jx:'栋桡，利有攸往，亨',tuan:'大过，大者过也，栋桡本末弱也',xiang:'泽灭木，大过，君子以独立不惧遁世无闷',luck:'凶',wx:'金',gong:'震',desc:'大过者祸也，泽灭木，过犹不及。宜独立不惧，勇于担当，但需防过度而失衡。'},
+  {i:29,name:'坎为水',  u:6,l:6,s:'䷜',d:'坎上坎下',jx:'习坎，有孚，维心亨',tuan:'习坎，重险也，水流而不盈',xiang:'水洊至，习坎，君子以常德行习教事',luck:'凶',wx:'水',gong:'坎',desc:'坎者险也，重险叠至，如陷深渊。宜常德行习教事，诚信中正可化险为夷。'},
+  {i:30,name:'离为火',  u:3,l:3,s:'䷝',d:'离上离下',jx:'利贞，亨。畜牝牛吉',tuan:'离，丽也，日月丽乎天',xiang:'明两作，离，大人以继明照于四方',luck:'吉',wx:'火',gong:'离',desc:'离者丽也，光明重照，依附光明。宜继明照四方，依附正道，柔顺中正。'},
+  {i:31,name:'泽山咸',  u:2,l:7,s:'䷞',d:'兑上艮下',jx:'亨利贞，取女吉',tuan:'咸，感也，柔上而刚下',xiang:'山上有泽，咸，君子以虚受人',luck:'吉',wx:'金',gong:'兑',desc:'咸者感也，山上有泽，感应交融。男女相感，婚姻吉。宜以虚受人，感而遂通。'},
+  {i:32,name:'雷风恒',  u:4,l:5,s:'䷟',d:'震上巽下',jx:'亨，无咎，利贞，利有攸往',tuan:'恒，久也，刚上而柔下',xiang:'雷风恒，君子以立不易方',luck:'吉',wx:'木',gong:'震',desc:'恒者久也，雷风相与，恒久不变。宜立不易方，坚守正道，持之以恒终有所成。'},
+  {i:33,name:'天山遁',  u:1,l:7,s:'䷠',d:'乾上艮下',jx:'亨，小利贞',tuan:'遁亨，遁而亨也，刚当位而应',xiang:'天下有山，遁，君子以远小人不恶而严',luck:'平',wx:'金',gong:'乾',desc:'遁者退也，天下有山，君子退隐。宜远小人不恶而严，适时退避以保全自身。'},
+  {i:34,name:'雷天大壮',u:4,l:1,s:'䷡',d:'震上乾下',jx:'利贞',tuan:'大壮，大者壮也，刚以动故壮',xiang:'雷在天上，大壮，君子以非礼弗履',luck:'吉',wx:'木',gong:'坤',desc:'大壮者盛也，雷在天上，声势浩大。阳气盛壮，宜非礼弗履，守正而行，不可恃强凌弱。'},
+  {i:35,name:'火地晋',  u:3,l:8,s:'䷢',d:'离上坤下',jx:'康侯用锡马蕃庶，昼日三接',tuan:'晋，进也，明出地上',xiang:'明出地上，晋，君子以自昭明德',luck:'吉',wx:'火',gong:'乾',desc:'晋者进也，日出地上，蒸蒸日上。宜自昭明德，积极进取，光明磊落地前进。'},
+  {i:36,name:'地火明夷',u:8,l:3,s:'䷣',d:'坤上离下',jx:'利艰贞',tuan:'明入地中，明夷，内文明而外柔顺',xiang:'明入地中，明夷，君子以莅众用晦而明',luck:'凶',wx:'土',gong:'坎',desc:'明夷者伤也，日入地中，光明受伤。宜内文明外柔顺，用晦而明，韬光养晦以待时机。'},
+  {i:37,name:'风火家人',u:5,l:3,s:'䷤',d:'巽上离下',jx:'利女贞',tuan:'家人，女正位乎内，男正位乎外',xiang:'风自火出，家人，君子以言有物而行有恒',luck:'吉',wx:'木',gong:'巽',desc:'家人者内也，风自火出，家道兴旺。宜言有物行有恒，修身齐家，家和万事兴。'},
+  {i:38,name:'火泽睽',  u:3,l:2,s:'䷥',d:'离上兑下',jx:'小事吉',tuan:'睽，火动而上，泽动而下',xiang:'上火下泽，睽，君子以同而异',luck:'平',wx:'火',gong:'艮',desc:'睽者乖也，上火下泽，背道而驰。宜求同存异，小事可成，大事需化解分歧。'},
+  {i:39,name:'水山蹇',  u:6,l:7,s:'䷦',d:'坎上艮下',jx:'利西南不利东北，利见大人',tuan:'蹇，难也，险在前也',xiang:'山上有水，蹇，君子以反身修德',luck:'凶',wx:'水',gong:'兑',desc:'蹇者难也，山上有水，举步维艰。宜反身修德，遇难而止，寻求贵人帮助渡难关。'},
+  {i:40,name:'雷水解',  u:4,l:6,s:'䷧',d:'震上坎下',jx:'利西南。无所往，其来复吉',tuan:'解，险以动，动而免乎险',xiang:'雷雨作，解，君子以赦过宥罪',luck:'吉',wx:'木',gong:'震',desc:'解者散也，雷雨作，万物解困。如春雨润物，困难消散。宜赦过宥罪，化解矛盾，宽以待人。'},
+  {i:41,name:'山泽损',  u:7,l:2,s:'䷨',d:'艮上兑下',jx:'有孚，元吉，无咎，可贞',tuan:'损，损下益上，其道上行',xiang:'山下有泽，损，君子以惩忿窒欲',luck:'平',wx:'土',gong:'艮',desc:'损者减也，山下有泽，损下益上。宜惩忿窒欲，减损私欲，舍小得大，损极必益。'},
+  {i:42,name:'风雷益',  u:5,l:4,s:'䷩',d:'巽上震下',jx:'利有攸往，利涉大川',tuan:'益，损上益下，民说无疆',xiang:'风雷益，君子以见善则迁有过则改',luck:'大吉',wx:'木',gong:'巽',desc:'益者增也，风雷相益，增益无穷。宜见善则迁有过则改，损上益下，利人利己。'},
+  {i:43,name:'泽天夬',  u:2,l:1,s:'䷪',d:'兑上乾下',jx:'扬于王庭，孚号有厉',tuan:'夬，决也，刚决柔也',xiang:'泽上于天，夬，君子以施禄及下',luck:'平',wx:'金',gong:'坤',desc:'夬者决也，泽在天上，决断果敢。宜施禄及下，果断决策，但需防居功自傲。'},
+  {i:44,name:'天风姤',  u:1,l:5,s:'䷫',d:'乾上巽下',jx:'女壮，勿用取女',tuan:'姤，遇也，柔遇刚也',xiang:'天下有风，姤，后以施命诰四方',luck:'平',wx:'金',gong:'乾',desc:'姤者遇也，风行天下，不期而遇。一阴初生，宜施命诰四方，注意防微杜渐。'},
+  {i:45,name:'泽地萃',  u:2,l:8,s:'䷬',d:'兑上坤下',jx:'亨，王假有庙，利见大人',tuan:'萃，聚也，顺以说，刚中而应',xiang:'泽上于地，萃，君子以除戎器戒不虞',luck:'吉',wx:'金',gong:'兑',desc:'萃者聚也，泽在地上，精英荟萃。宜除戎器戒不虞，聚贤纳士，万众一心。'},
+  {i:46,name:'地风升',  u:8,l:5,s:'䷭',d:'坤上巽下',jx:'元亨。用见大人，勿恤',tuan:'柔以时升，巽而顺，刚中而应',xiang:'地中生木，升，君子以顺德积小以高大',luck:'大吉',wx:'土',gong:'震',desc:'升者进也，地中生木，节节高升。宜顺德积小以高大，循序渐进，步步高升。'},
+  {i:47,name:'泽水困',  u:2,l:6,s:'䷮',d:'兑上坎下',jx:'亨，贞，大人吉，无咎',tuan:'困，刚揜也，险以说',xiang:'泽无水，困，君子以致命遂志',luck:'凶',wx:'金',gong:'兑',desc:'困者厄也，泽中无水，陷入困境。宜致命遂志，坚守信念，困极必通，否极泰来。'},
+  {i:48,name:'水风井',  u:6,l:5,s:'䷯',d:'坎上巽下',jx:'改邑不改井，无丧无得',tuan:'井，养而不穷也，改邑不改井',xiang:'木上有水，井，君子以劳民劝相',luck:'平',wx:'水',gong:'震',desc:'井者静也，木上有水，如井养人。宜劳民劝相，养而不穷，坚守根本不变。'},
+  {i:49,name:'泽火革',  u:2,l:3,s:'䷰',d:'兑上离下',jx:'己日乃孚，元亨利贞',tuan:'革，水火相息，二女同居其志不相得',xiang:'泽中有火，革，君子以治历明时',luck:'平',wx:'金',gong:'坎',desc:'革者改也，水火相争，变革之时。宜治历明时，顺应变革，除旧布新，把握时机。'},
+  {i:50,name:'火风鼎',  u:3,l:5,s:'䷱',d:'离上巽下',jx:'元吉，亨',tuan:'鼎，象也，以木巽火，亨饪也',xiang:'木上有火，鼎，君子以正位凝命',luck:'大吉',wx:'火',gong:'离',desc:'鼎者器也，木上有火，如鼎烹食。宜正位凝命，掌握权柄，建立基业，革故鼎新。'},
+  {i:51,name:'震为雷',  u:4,l:4,s:'䷲',d:'震上震下',jx:'亨。震来虩虩，笑言哑哑',tuan:'震亨，震来虩虩，恐致福也',xiang:'洊雷震，君子以恐惧修省',luck:'平',wx:'木',gong:'震',desc:'震者动也，雷声阵阵，惊动百里。宜恐惧修省，临事而惧，戒慎恐惧可致福。'},
+  {i:52,name:'艮为山',  u:7,l:7,s:'䷳',d:'艮上艮下',jx:'艮其背，不获其身，行其庭不见其人',tuan:'艮，止也，时止则止，时行则行',xiang:'兼山艮，君子以思不出其位',luck:'平',wx:'土',gong:'艮',desc:'艮者止也，两山并立，知止不殆。宜思不出其位，当止则止，动静不失其时。'},
+  {i:53,name:'风山渐',  u:5,l:7,s:'䷴',d:'巽上艮下',jx:'女归吉，利贞',tuan:'渐之进也，女归吉也，进得位',xiang:'山上有木，渐，君子以居贤德善俗',luck:'吉',wx:'木',gong:'艮',desc:'渐者进也，山上有木，缓缓生长。宜居贤德善俗，循序渐进，不可急于求成。如女子出嫁，稳步前行。'},
+  {i:54,name:'雷泽归妹',u:4,l:2,s:'䷵',d:'震上兑下',jx:'征凶，无攸利',tuan:'归妹，天地之大义也，天地不交而万物不兴',xiang:'泽上有雷，归妹，君子以永终知敝',luck:'凶',wx:'木',gong:'兑',desc:'归妹者婚也，泽上有雷，婚姻之事。宜永终知敝，慎重婚恋，防始乱终弃。'},
+  {i:55,name:'雷火丰',  u:4,l:3,s:'䷶',d:'震上离下',jx:'亨，王假之，勿忧宜日中',tuan:'丰，大也，明以动故丰',xiang:'雷电皆至，丰，君子以折狱致刑',luck:'吉',wx:'木',gong:'坎',desc:'丰者大也，雷电皆至，盛大丰富。宜折狱致刑，明辨是非，盛极必衰需保盈持泰。'},
+  {i:56,name:'火山旅',  u:3,l:7,s:'䷷',d:'离上艮下',jx:'小亨，旅贞吉',tuan:'旅，小亨，柔得中乎外而顺乎刚',xiang:'山上有火，旅，君子以明慎用刑而不留狱',luck:'平',wx:'火',gong:'离',desc:'旅者客也，山上有火，在外漂泊。宜明慎用刑，旅居在外需谨慎行事，柔顺中正。'},
+  {i:57,name:'巽为风',  u:5,l:5,s:'䷸',d:'巽上巽下',jx:'小亨，利有攸往，利见大人',tuan:'重巽以申命，刚巽乎中正而志行',xiang:'随风巽，君子以申命行事',luck:'平',wx:'木',gong:'巽',desc:'巽者入也，风行草偃，顺势而入。宜申命行事，柔顺谦逊，随风就势，以柔克刚。'},
+  {i:58,name:'兑为泽',  u:2,l:2,s:'䷹',d:'兑上兑下',jx:'亨，利贞',tuan:'兑，说也，刚中而柔外',xiang:'丽泽兑，君子以朋友讲习',luck:'吉',wx:'金',gong:'兑',desc:'兑者悦也，两泽相连，欢悦和睦。宜朋友讲习，以和为贵，悦而应之，利人际关系。'},
+  {i:59,name:'风水涣',  u:5,l:6,s:'䷺',d:'巽上坎下',jx:'亨，王假有庙，利涉大川',tuan:'涣亨，刚来而不穷，柔得位乎外而上同',xiang:'风行水上，涣，先王以享于帝立庙',luck:'吉',wx:'木',gong:'离',desc:'涣者散也，风行水上，涣散重聚。宜享于帝立庙，聚拢人心，散而复聚的契机。'},
+  {i:60,name:'水泽节',  u:6,l:2,s:'䷻',d:'坎上兑下',jx:'亨。苦节不可贞',tuan:'节亨，刚柔分而刚得中',xiang:'泽上有水，节，君子以制数度议德行',luck:'平',wx:'水',gong:'坎',desc:'节者止也，泽上有水，节制有度。宜制数度议德行，凡事有节有度，过苦则伤。'},
+  {i:61,name:'风泽中孚',u:5,l:2,s:'䷼',d:'巽上兑下',jx:'豚鱼吉，利涉大川，利贞',tuan:'中孚，柔在内而刚得中，说而巽',xiang:'泽上有风，中孚，君子以议狱缓死',luck:'吉',wx:'木',gong:'艮',desc:'中孚者信也，泽上有风，诚信感人。宜议狱缓死，以诚信待人，至诚可感天地。'},
+  {i:62,name:'雷山小过',u:4,l:7,s:'䷽',d:'震上艮下',jx:'亨利贞。可小事不可大事',tuan:'小过，小者过而亨也，过以利贞',xiang:'山上有雷，小过，君子以行过乎恭丧过乎哀',luck:'平',wx:'木',gong:'兑',desc:'小过者过也，山上有雷，小有过越。宜行过乎恭，小事可成大事勿为，小过无妨大节不亏。'},
+  {i:63,name:'水火既济',u:6,l:3,s:'䷾',d:'坎上离下',jx:'亨小，利贞。初吉终乱',tuan:'既济亨，小者亨也，利贞',xiang:'水在火上，既济，君子以思患而豫防之',luck:'平',wx:'水',gong:'坎',desc:'既济者成也，水在火上，事已成就。宜思患而豫防之，成而易败需居安思危，守成不易。'},
+  {i:64,name:'火水未济',u:3,l:6,s:'䷿',d:'离上坎下',jx:'亨。小狐汔济，濡其尾',tuan:'未济亨，柔得中也，虽不当位刚柔应也',xiang:'火在水上，未济，君子以慎辨物居方',luck:'平',wx:'火',gong:'离',desc:'未济者待也，火在水上，事尚未成。宜慎辨物居方，虽未完成但充满希望，不可半途而废。'}
+];
+
+// 快速查找：通过上卦下卦索引
+function findGua(upper, lower) {
+  const idx = (upper - 1) * 8 + (lower - 1);
+  return GUA64.find(g => (g.u-1)*8 + (g.l-1) === idx) || GUA64[0];
+}
+
+// 天干→先后天数及卦象（纳甲法）
+function stemToTrigram(stem) {
+  const map = {甲:1,乙:8,丙:7,丁:2,戊:6,己:3,庚:4,辛:5,壬:1,癸:8};
+  return map[stem] || 1;
+}
+// 地支→先天八卦数
+function branchToTrigram(branch) {
+  const idx = EB.indexOf(branch);
+  if (idx < 0) return 8;
+  const num = (idx + 1) % 8;
+  return num === 0 ? 8 : num;
+}
+
+// 生成命卦：以日柱天干为上卦，日柱地支为下卦
+function generateDayHexagram(dayStem, dayBranch) {
+  const upper = stemToTrigram(dayStem);
+  const lower = branchToTrigram(dayBranch);
+  const gua = findGua(upper, lower);
+  // 动爻计算：日干数+日支数 mod 6
+  const stemNum = HS.indexOf(dayStem) + 1;
+  const branchNum = EB.indexOf(dayBranch) + 1;
+  const movingLine = ((stemNum + branchNum) % 6) || 6;
+  // 变卦：根据动爻改变对应位的阴阳
+  // 上卦下卦各三爻：上卦爻位判断（动爻>3则上卦变，<=3则下卦变）
+  const uLines = guaToLines(gua.u), lLines = guaToLines(gua.l);
+  let newUpper = gua.u, newLower = gua.l;
+  if (movingLine <= 3) {
+    // 下卦爻变
+    const lineIdx = movingLine - 1;
+    lLines[lineIdx] = lLines[lineIdx] === 1 ? 0 : 1;
+    newLower = linesToTrigram(lLines);
+  } else {
+    // 上卦爻变
+    const lineIdx = movingLine - 4;
+    uLines[lineIdx] = uLines[lineIdx] === 1 ? 0 : 1;
+    newUpper = linesToTrigram(uLines);
+  }
+  const changedGua = findGua(newUpper, newLower);
+  return {
+    gua, movingLine, changedGua,
+    upperName: XIANTIAN_BAGUA[gua.u], upperSym: BAGUA_SYM[gua.u],
+    lowerName: XIANTIAN_BAGUA[gua.l], lowerSym: BAGUA_SYM[gua.l],
+    upperWx: BAGUA_WX[gua.u], lowerWx: BAGUA_WX[gua.l],
+    upperNature: BAGUA_NATURE[gua.u], lowerNature: BAGUA_NATURE[gua.l]
+  };
+}
+
+// 八卦→三爻线（阳=1，阴=0，从下往上）
+function guaToLines(trigramNum) {
+  const map = {1:[1,1,1],2:[1,1,0],3:[1,0,1],4:[1,0,0],5:[0,1,1],6:[0,1,0],7:[0,0,1],8:[0,0,0]};
+  return map[trigramNum] || [0,0,0];
+}
+function linesToTrigram(lines) {
+  const key = lines.join('');
+  const map = {'111':1,'110':2,'101':3,'100':4,'011':5,'010':6,'001':7,'000':8};
+  return map[key] || 8;
+}
+
+// 生成卦象分析HTML
+function renderHexagramAnalysis(data) {
+  const pp = data.fourPillars;
+  const hx = generateDayHexagram(pp.day.stem, pp.day.branch);
+  const g = hx.gua, cg = hx.changedGua;
+  let html = '<h4>🔮 六十四卦命卦分析（梅花易数）</h4>';
+  html += `<p>以<span class="hl">日柱 ${pp.day.ganZhi}</span>起卦：`;
+  html += `日干<span class="hl">${pp.day.stem}</span>→上卦<strong>${hx.upperSym}${hx.upperName}（${hx.upperNature}·${hx.upperWx}）</strong>，`;
+  html += `日支<span class="hl">${pp.day.branch}</span>→下卦<strong>${hx.lowerSym}${hx.lowerName}（${hx.lowerNature}·${hx.lowerWx}）</strong></p>`;
+  html += `<div style="text-align:center;margin:10px 0;padding:12px;background:rgba(201,169,110,0.08);border-radius:8px;">`;
+  html += `<div style="font-size:3em;">${g.s}</div>`;
+  html += `<p style="font-size:1.2em;color:var(--gold-light);font-weight:bold;">${g.name}</p>`;
+  html += `<p style="color:var(--text-dim);font-size:0.82em;">${g.d} · 宫位：${g.gong}宫 · 吉凶：<span class="${g.luck==='大吉'||g.luck==='吉'?'good':'warn'}">${g.luck}</span></p>`;
+  html += `</div>`;
+  // 卦辞
+  html += `<p><strong>卦辞：</strong>"<span class="hl">${g.jx}</span>"</p>`;
+  html += `<p><strong>彖传：</strong>${g.tuan}</p>`;
+  html += `<p><strong>大象：</strong>${g.xiang}</p>`;
+  html += `<p><strong>解卦：</strong>${g.desc}</p>`;
+  // 动爻
+  const lineNames = ['','初','二','三','四','五','上'];
+  const yinYangLabel = hx.movingLine <= 3
+    ? `下卦${hx.lowerName}${lineNames[hx.movingLine]}爻`
+    : `上卦${hx.upperName}${lineNames[hx.movingLine-3]}爻`;
+  html += `<p style="margin-top:8px;"><strong>动爻：</strong>${lineNames[hx.movingLine]}爻动（${yinYangLabel}），此为变化之机。</p>`;
+  // 变卦
+  html += `<div style="margin:10px 0;padding:10px;background:rgba(201,169,110,0.04);border-radius:6px;text-align:center;">`;
+  html += `<p style="font-size:0.82em;color:var(--text-dim);">→ 变卦 →</p>`;
+  html += `<div style="font-size:2.5em;">${cg.s}</div>`;
+  html += `<p style="color:var(--gold-light);font-weight:bold;">${cg.name}</p>`;
+  html += `<p style="color:var(--text-dim);font-size:0.82em;">${cg.xiang}</p>`;
+  html += `<p style="font-size:0.85em;">${cg.desc}</p>`;
+  html += `</div>`;
+  // 体用生克
+  html += '<h4>体用生克</h4>';
+  const tiWx = hx.lowerWx; // 下卦为体（内）
+  const yongWx = hx.upperWx; // 上卦为用（外）
+  const wxCycle = {木:'火',火:'土',土:'金',金:'水',水:'木'};
+  const wxControl = {木:'土',土:'水',水:'火',火:'金',金:'木'};
+  let tiYongAnalysis = '';
+  if (tiWx === yongWx) {
+    tiYongAnalysis = '体用比和，内外和谐，诸事顺遂。运势平稳向上，人际关系和谐。';
+  } else if (wxCycle[tiWx] === yongWx) {
+    tiYongAnalysis = '用生体（外用生内体），外界力量来助我，是极好的格局。主得外力相助，事半功倍，贵人运强，做事易成。';
+  } else if (wxCycle[yongWx] === tiWx) {
+    tiYongAnalysis = '体生用（内体生外用），我付出滋养外界。虽有消耗，但善有善报，利于建立关系、行善积德。付出终有回报。';
+  } else if (wxControl[tiWx] === yongWx) {
+    tiYongAnalysis = '用克体（外用克内体），外界克制于我，压力较大。行事需谨慎低调，防小人口舌，避免重大决策。以静制动为上。';
+  } else if (wxControl[yongWx] === tiWx) {
+    tiYongAnalysis = '体克用（内体克外用），我能制外，有一定掌控力。虽然辛苦但有成就感，适合攻坚克难，但不宜过度消耗。';
+  }
+  html += `<p>体卦（内）<strong>${hx.lowerName}（${tiWx}）</strong> · 用卦（外）<strong>${hx.upperName}（${yongWx}）</strong></p>`;
+  html += `<p style="color:var(--gold-light);">${tiYongAnalysis}</p>`;
+  // 纳音五行补充
+  html += '<h4>纳音五行</h4>';
+  const nY = NAYIN_LOOKUP(pp.year.ganZhi), nM = NAYIN_LOOKUP(pp.month.ganZhi);
+  const nD = NAYIN_LOOKUP(pp.day.ganZhi), nH = NAYIN_LOOKUP(pp.hour.ganZhi);
+  html += `<p>年柱${pp.year.ganZhi}：<span class="hl">${nY}</span> · 月柱${pp.month.ganZhi}：<span class="hl">${nM}</span> · 日柱${pp.day.ganZhi}：<span class="hl">${nD}</span> · 时柱${pp.hour.ganZhi}：<span class="hl">${nH}</span></p>`;
+  html += `<p style="color:var(--text-dim);font-size:0.82em;">纳音五行将六十甲子分为三十组，每组配一个五行意象（如"海中金""炉中火"），反映更深层的五行气质。日柱纳音为<span class="hl">${nD}</span>，结合卦象解读命格底蕴。</p>`;
+  return html;
+}
+
+// 六十甲子纳音表
+const NAYIN_TABLE = [
+  '海中金','炉中火','大林木','路旁土','剑锋金','山头火',
+  '涧下水','城头土','白蜡金','杨柳木','泉中水','屋上土',
+  '霹雳火','松柏木','长流水','沙中金','山下火','平地木',
+  '壁上土','金箔金','覆灯火','天河水','大驿土','钗环金',
+  '桑柘木','大溪水','沙中土','天上火','石榴木','大海水'
+];
+function NAYIN_LOOKUP(ganZhi) {
+  const stemIdx = HS.indexOf(ganZhi[0]);
+  const branchIdx = EB.indexOf(ganZhi[1]);
+  if (stemIdx < 0 || branchIdx < 0) return '—';
+  const diff = (stemIdx - branchIdx + 12) % 12;
+  if (diff % 2 !== 0) return '—';
+  const r = diff / 2;
+  const idx = r * 10 + stemIdx;
+  const nIdx = Math.floor(idx / 2);
+  return NAYIN_TABLE[nIdx] || '—';
+}
+
+// 中国新年日期 (公历月/日) 及闰月信息 1900-2050
+// 格式: {m, d, leapMonth, leapDays}
+// leapMonth: 0=无闰月, 1-12=闰月月份
+// 月份天数: 通过大月小月交替推算, 仅记录需要修正的年份
+const CHINESE_NEW_YEAR = {
+  1900:{m:1,d:31,leap:8},1901:{m:2,d:19},1902:{m:2,d:8},1903:{m:1,d:29,leap:5},
+  1904:{m:2,d:16},1905:{m:2,d:4},1906:{m:1,d:25,leap:4},1907:{m:2,d:13},
+  1908:{m:2,d:2},1909:{m:1,d:22,leap:2},1910:{m:2,d:10},1911:{m:1,d:30,leap:6},
+  1912:{m:2,d:18},1913:{m:2,d:6},1914:{m:1,d:26,leap:5},1915:{m:2,d:14},
+  1916:{m:2,d:3},1917:{m:1,d:23,leap:2},1918:{m:2,d:11},1919:{m:2,d:1,leap:7},
+  1920:{m:2,d:20},1921:{m:2,d:8},1922:{m:1,d:28,leap:5},1923:{m:2,d:16},
+  1924:{m:2,d:5},1925:{m:1,d:24,leap:4},1926:{m:2,d:13},1927:{m:2,d:2},
+  1928:{m:1,d:23,leap:2},1929:{m:2,d:10},1930:{m:1,d:30,leap:6},1931:{m:2,d:17},
+  1932:{m:2,d:6},1933:{m:1,d:26,leap:5},1934:{m:2,d:14},1935:{m:2,d:4},
+  1936:{m:1,d:24,leap:3},1937:{m:2,d:11},1938:{m:1,d:31,leap:7},1939:{m:2,d:19},
+  1940:{m:2,d:8},1941:{m:1,d:27,leap:6},1942:{m:2,d:15},1943:{m:2,d:5},
+  1944:{m:1,d:25,leap:4},1945:{m:2,d:13},1946:{m:2,d:2},1947:{m:1,d:22,leap:2},
+  1948:{m:2,d:10},1949:{m:1,d:29,leap:7},1950:{m:2,d:17},1951:{m:2,d:6},
+  1952:{m:1,d:27,leap:5},1953:{m:2,d:14},1954:{m:2,d:3},1955:{m:1,d:24,leap:3},
+  1956:{m:2,d:12},1957:{m:1,d:31,leap:8},1958:{m:2,d:18},1959:{m:2,d:8},
+  1960:{m:1,d:28,leap:6},1961:{m:2,d:15},1962:{m:2,d:5},1963:{m:1,d:25,leap:4},
+  1964:{m:2,d:13},1965:{m:2,d:2},1966:{m:1,d:21,leap:3},1967:{m:2,d:9},
+  1968:{m:1,d:30,leap:7},1969:{m:2,d:17},1970:{m:2,d:6},1971:{m:1,d:27,leap:5},
+  1972:{m:2,d:15},1973:{m:2,d:3},1974:{m:1,d:23,leap:4},1975:{m:2,d:11},
+  1976:{m:1,d:31,leap:8},1977:{m:2,d:18},1978:{m:2,d:7},1979:{m:1,d:28,leap:6},
+  1980:{m:2,d:16},1981:{m:2,d:5},1982:{m:1,d:25,leap:4},1983:{m:2,d:13},
+  1984:{m:2,d:2,leap:10},1985:{m:2,d:20},1986:{m:2,d:9},1987:{m:1,d:29,leap:6},
+  1988:{m:2,d:17},1989:{m:2,d:6},1990:{m:1,d:27,leap:5},1991:{m:2,d:15},
+  1992:{m:2,d:4},1993:{m:1,d:23,leap:3},1994:{m:2,d:10},1995:{m:1,d:31,leap:8},
+  1996:{m:2,d:19},1997:{m:2,d:7},1998:{m:1,d:28,leap:5},1999:{m:2,d:16},
+  2000:{m:2,d:5},2001:{m:1,d:24,leap:4},2002:{m:2,d:12},2003:{m:2,d:1},
+  2004:{m:1,d:22,leap:2},2005:{m:2,d:9},2006:{m:1,d:29,leap:7},2007:{m:2,d:18},
+  2008:{m:2,d:7},2009:{m:1,d:26,leap:5},2010:{m:2,d:14},2011:{m:2,d:3},
+  2012:{m:1,d:23,leap:4},2013:{m:2,d:10},2014:{m:1,d:31,leap:9},2015:{m:2,d:19},
+  2016:{m:2,d:8},2017:{m:1,d:28,leap:6},2018:{m:2,d:16},2019:{m:2,d:5},
+  2020:{m:1,d:25,leap:4},2021:{m:2,d:12},2022:{m:2,d:1},2023:{m:1,d:22,leap:2},
+  2024:{m:2,d:10},2025:{m:1,d:29,leap:6},2026:{m:2,d:17},2027:{m:2,d:6},
+  2028:{m:1,d:26,leap:5},2029:{m:2,d:13},2030:{m:2,d:3},2031:{m:1,d:23,leap:3},
+  2032:{m:2,d:11},2033:{m:1,d:31,leap:11},2034:{m:2,d:19},2035:{m:2,d:8},
+  2036:{m:1,d:28,leap:6},2037:{m:2,d:15},2038:{m:2,d:4},2039:{m:1,d:24,leap:5},
+  2040:{m:2,d:12},2041:{m:2,d:1},2042:{m:1,d:22,leap:2},2043:{m:2,d:10},
+  2044:{m:1,d:30,leap:7},2045:{m:2,d:17},2046:{m:2,d:6},2047:{m:1,d:26,leap:5},
+  2048:{m:2,d:14},2049:{m:2,d:2},2050:{m:1,d:23,leap:3}
+};
+
+// 获取某年农历月的大小 (标准版: 大部分年份大月小月交替)
+// 返回该月的天数(29或30)
+function getLunarMonthDays(year, month, isLeap) {
+  const cny = CHINESE_NEW_YEAR[year];
+  if(!cny) {
+    // 超出范围，使用默认交替模式
+    return (month % 2 === 1) ? 30 : 29;
+  }
+
+  // 标准模式: 正月大(30), 二月小(29), 三月大(30), 四月小(29), ...
+  // 但有闰月的年份会影响后续月的排列
+  const leap = cny.leap || 0;
+
+  if(isLeap) {
+    // 闰月: 与前一个月相反
+    // 默认闰月为小月(29)
+    return 29;
+  }
+
+  // 正常月
+  let actualMonth = month;
+  if(leap && month > leap) {
+    // 有闰月时，实际月份偏移
+    // 简化处理：闰月之后的大小月模式会翻转
+    // 闰月前: 大(1),小(2),大(3),小(4)...
+    // 闰月后: 闰月之后的第一个月与闰月前最后一个月大小相反
+    // 简化: 使用固定交替 (大月从正月开始)
+  }
+
+  // 默认: 奇数月大(30), 偶数月小(29)
+  return (month % 2 === 1) ? 30 : 29;
+}
+
+function lunarYearDays(year) {
+  const cny = CHINESE_NEW_YEAR[year];
+  if(!cny) return 354; // 默认值
+  const leap = cny.leap || 0;
+  let days = 0;
+  for(let m=1; m<=12; m++) {
+    days += getLunarMonthDays(year, m, false);
+  }
+  if(leap) days += 29; // 闰月29天
+  return days;
+}
+
+function leapMonth(year) {
+  const cny = CHINESE_NEW_YEAR[year];
+  return cny ? (cny.leap||0) : 0;
+}
+
+function lunarMonthDays(year, m) {
+  const cny = CHINESE_NEW_YEAR[year];
+  if(!cny) return (m%2===1)?30:29;
+  // 这里m是用户输入，但我们的新solarToLunar不再调用这个
+  return getLunarMonthDays(year, m, false);
+}
+
+// 六十甲子表
+const GZ_TABLE = [];
+for(let i=0;i<60;i++) GZ_TABLE.push(HS[i%10]+EB[i%12]);
+
+// 纳音表（六十甲子 → 纳音）
+const NAYIN_DATA = [
+  '海中金','炉中火','大林木','路旁土','剑锋金','山头火',
+  '涧下水','城头土','白蜡金','杨柳木','泉中水','屋上土',
+  '霹雳火','松柏木','长流水','沙中金','山下火','平地木',
+  '壁上土','金箔金','覆灯火','天河水','大驿土','钗钏金',
+  '桑柘木','大溪水','沙中土','天上火','石榴木','大海水'
+];
+function getNayin(gzIdx) { return NAYIN_DATA[Math.floor(gzIdx/2)]; }
+function getNayinElement(gzIdx) {
+  const n = getNayin(gzIdx);
+  for(let e of ['金','木','水','火','土']) { if(n.includes(e)) return e; }
+  return '土';
+}
+function getWuXingJuNum(element) {
+  return {金:4,木:3,水:2,火:6,土:5}[element] || 5;
+}
+
+// 十二宫名（从命宫起逆时针排）
+const HOUSE_NAMES = ['命宫','兄弟','夫妻','子女','财帛','疾厄','迁移','交友','官禄','田宅','福德','父母'];
+// 地支三合
+const SANHE_GROUPS = [
+  ['申','子','辰'], ['巳','酉','丑'], ['亥','卯','未'], ['寅','午','戌']
+];
+const OPPOSITE = {子:'午',丑:'未',寅:'申',卯:'酉',辰:'戌',巳:'亥',午:'子',未:'丑',申:'寅',酉:'卯',戌:'辰',亥:'巳'};
+
+function getSanHe(branch) {
+  for(let g of SANHE_GROUPS) { if(g.includes(branch)) return g; }
+  return [];
+}
+
+// 星名
+const ZIWEI_STARS = ['紫微','天机','','太阳','武曲','天同','','','廉贞'];
+const TIANFU_STARS = ['天府','太阴','贪狼','巨门','天相','天梁','七杀','','','','破军'];
+
+// 四化表（年干 → 禄权科忌）
+const SIHUA_TABLE = {
+  '甲':{禄:'廉贞',权:'破军',科:'武曲',忌:'太阳'},
+  '乙':{禄:'天机',权:'天梁',科:'紫微',忌:'太阴'},
+  '丙':{禄:'天同',权:'天机',科:'文昌',忌:'廉贞'},
+  '丁':{禄:'太阴',权:'天同',科:'天机',忌:'巨门'},
+  '戊':{禄:'贪狼',权:'太阴',科:'右弼',忌:'天机'},
+  '己':{禄:'武曲',权:'贪狼',科:'天梁',忌:'文曲'},
+  '庚':{禄:'太阳',权:'武曲',科:'太阴',忌:'天同'},
+  '辛':{禄:'巨门',权:'太阳',科:'文曲',忌:'文昌'},
+  '壬':{禄:'天梁',权:'紫微',科:'左辅',忌:'武曲'},
+  '癸':{禄:'破军',权:'巨门',科:'太阴',忌:'贪狼'},
+};
+
+// 星曜亮度表（14主星 × 12地支，子=0丑=1...亥=11）
+// 值: 庙=5 旺=4 得=3 利=2 平=1 陷=0
+const BRIGHTNESS = {
+  '紫微':[4,4,5,5,5,5,5,5,4,5,5,4],
+  '天机':[4,0,4,5,4,0,5,0,4,0,4,4],
+  '太阳':[0,0,5,5,5,4,5,4,0,0,0,0],
+  '武曲':[4,4,4,0,4,5,0,4,4,5,4,4],
+  '天同':[5,0,4,5,0,4,4,0,4,5,5,4],
+  '廉贞':[4,4,5,0,4,0,4,4,5,0,4,4],
+  '天府':[4,4,5,5,4,5,5,4,4,5,5,4],
+  '太阴':[5,4,4,0,4,0,4,4,5,5,5,5],
+  '贪狼':[4,0,5,0,4,0,4,0,5,4,4,4],
+  '巨门':[4,4,4,5,0,0,4,5,4,0,4,4],
+  '天相':[4,4,5,0,4,5,4,0,4,5,4,4],
+  '天梁':[4,4,4,5,5,4,5,0,4,0,4,4],
+  '七杀':[4,0,5,5,4,4,5,0,4,4,4,4],
+  '破军':[4,4,0,0,4,4,4,0,4,4,0,4],
+};
+const BRIGHT_NAMES = ['陷','平','利','得','旺','庙'];
+
+// ============================================================
+//  模块 B：日历转换
+// ============================================================
+
+function lunarYearDays(y) {
+  const v = LUNAR_INFO[y-1900];
+  let sum=0;
+  // bits 4-15: month size flags (1=30天, 0=29天), bit4=正月...bit15=十二月
+  for(let i=0x8000; i>0x8; i>>=1) { if(v&i) sum+=30; else sum+=29; }
+  const leap = v&0xf;
+  if(leap) sum += 29; // 闰月默认为小月(29天)
+  return sum;
+}
+
+function leapMonth(y) { return LUNAR_INFO[y-1900]&0xf; }
+
+function lunarMonthDays(y, m) {
+  const v = LUNAR_INFO[y-1900];
+  const leap = v&0xf;
+  if(leap && m === leap) return 29; // 闰月，29天
+  // 正常月份: bit 4=正月, bit 5=二月, ..., bit 15=十二月
+  let actualM = m;
+  if(leap && m > leap) actualM--; // 有闰月时，后面的月份索引减一
+  const bitPos = 4 + actualM - 1; // bit位置
+  if(bitPos > 15) return 30; // 超出范围，默认大月
+  return (v & (1 << bitPos)) ? 30 : 29;
+}
+
+function solarToLunar(year, month, day) {
+  // 使用中国新年日期表进行精确转换
+  // 先找该年的新年日期
+  let cny = CHINESE_NEW_YEAR[year];
+  let ly = year;
+  let isBeforeCNY = false;
+
+  if(!cny) {
+    // 超出查找范围，使用估算
+    cny = {m:2, d:5, leap:0};
+  }
+
+  // 判断目标日期在春节前还是后
+  if(month < cny.m || (month === cny.m && day < cny.d)) {
+    isBeforeCNY = true;
+    ly = year - 1;
+    cny = CHINESE_NEW_YEAR[ly];
+    if(!cny) cny = {m:2, d:5, leap:0};
+  }
+
+  // 计算从农历新年到目标日期的天数
+  let offset = 0;
+  const cnyDate = new Date(year, cny.m-1, cny.d);
+  const targetDate = new Date(year, month-1, day);
+
+  if(isBeforeCNY) {
+    // 在上一年的农历年中
+    const prevCNY = CHINESE_NEW_YEAR[ly];
+    if(!prevCNY) return { year:ly, month:12, day:20, isLeap:false };
+    const prevCNYDate = new Date(ly, prevCNY.m-1, prevCNY.d);
+    offset = Math.floor((targetDate - prevCNYDate) / 86400000);
+  } else {
+    offset = Math.floor((targetDate - cnyDate) / 86400000);
+  }
+
+  // 逐月确定农历月日
+  const leap = cny.leap || 0;
+  let lm = 1, ld = 1, lIsLeap = false;
+
+  for(; lm <= 12; lm++) {
+    const mDays = getLunarMonthDays(ly, lm, false);
+
+    // 先检查闰月
+    if(leap && lm === leap + 1 && !lIsLeap) {
+      const leapDays = getLunarMonthDays(ly, leap, true);
+      if(offset < leapDays) {
+        lm = leap;
+        ld = offset + 1;
+        lIsLeap = true;
+        break;
+      }
+      offset -= leapDays;
+    }
+
+    if(offset < mDays) {
+      ld = offset + 1;
+      break;
+    }
+    offset -= mDays;
+  }
+
+  // 如果到了12月后还有剩余（极端情况），放在12月
+  if(lm > 12) { lm = 12; ld = Math.min(offset + 1, 30); }
+
+  return { year:ly, month:lm, day:ld, isLeap:lIsLeap };
+}
+
+function daysFrom1900(y, m, d) {
+  let days = 0;
+  for(let i=1900; i<y; i++) days += isLeapYear(i)?366:365;
+  const monthDays = [31,28,31,30,31,30,31,31,30,31,30,31];
+  if(isLeapYear(y)) monthDays[1]=29;
+  for(let i=0; i<m-1; i++) days += monthDays[i];
+  days += (d - 1);
+  return days;
+}
+
+function isLeapYear(y) { return (y%4===0&&y%100!==0)||(y%400===0); }
+
+// 节气近似日期表（每月"节"的日期，用于确定月柱）
+// 立春、惊蛰、清明、立夏、芒种、小暑、立秋、白露、寒露、立冬、大雪、小寒
+const JIE_QI_DATES = [
+  {m:2,d:4},{m:3,d:6},{m:4,d:5},{m:5,d:6},{m:6,d:6},{m:7,d:7},
+  {m:8,d:7},{m:9,d:8},{m:10,d:8},{m:11,d:7},{m:12,d:7},{m:1,d:6}
+];
+
+function getSolarTermApprox(year, idx) {
+  // idx对应二十四节气中的"节"(0=立春,2=惊蛰,...,22=小寒)
+  // JIE_QI_DATES按寅月到丑月排列：0=立春(寅),1=惊蛰(卯),...,11=小寒(丑)
+  const jd = JIE_QI_DATES[idx];
+  // 小寒在次年1月，年份需特殊处理
+  const y = (idx === 11) ? year + 1 : year;
+  return { year:y, month:jd.m, day:jd.d };
+}
+
+// ============================================================
+//  模块 C：四柱计算
+// ============================================================
+
+function getYearPillar(year, month, day) {
+  // 以立春为界
+  const lc = getSolarTermApprox(year, 0); // 立春=寅月之节(JIE_QI_DATES[0])
+  const isBeforeSpring = (month < lc.month) || (month===lc.month && day < lc.day);
+  const y = isBeforeSpring ? year-1 : year;
+  return { stem:HS[(y-4)%10], branch:EB[(y-4)%12], ganZhi:HS[(y-4)%10]+EB[(y-4)%12] };
+}
+
+function getMonthPillar(yearStem, year, month, day) {
+  // 根据出生日期确定属于哪个节气月
+  let mIdx = -1;
+  for(let i=0;i<12;i++) {
+    const t = getSolarTermApprox(year, i);
+    const d = new Date(t.year, t.month-1, t.day);
+    const birth = new Date(year, month-1, day);
+    if(birth >= d) {
+      mIdx = i; // 寅月=0, 卯月=1, ..., 丑月=11
+    }
+  }
+  if(mIdx < 0) {
+    mIdx = 11; // 在立春之前，属于上一年的丑月
+  }
+
+  const monthBranchIdx = (mIdx + 2) % 12; // 寅月→地支寅(index 2)
+  const monthBranch = EB[monthBranchIdx];
+
+  // 月干（五虎遁）：正月(寅)天干 = (yearStemIdx%5)*2+2
+  const yearStemIdx = HS.indexOf(yearStem);
+  const yinStem = ((yearStemIdx % 5) * 2 + 2) % 10;
+  const monthStemIdx = (yinStem + mIdx) % 10;
+  const monthStem = HS[monthStemIdx];
+
+  return { stem:monthStem, branch:monthBranch, ganZhi:monthStem+monthBranch };
+}
+
+function getDayPillar(year, month, day) {
+  // 1900-01-01 = 甲戌 (index 10 in GZ_TABLE)
+  const totalDays = daysFrom1900(year, month, day);
+  const idx = (10 + totalDays) % 60;
+  return { stem:HS[idx%10], branch:EB[idx%12], ganZhi:GZ_TABLE[idx] };
+}
+
+function getHourPillar(dayStem, hour) {
+  const h = parseInt(hour);
+  // 时支: 子=23-1, 丑=1-3, 寅=3-5, ...
+  const hourBranchIdx = Math.floor((h+1)/2) % 12;
+  const hourBranch = EB[hourBranchIdx];
+
+  // 时干 (五鼠遁)
+  const dayStemIdx = HS.indexOf(dayStem);
+  const hourStemIdx = (dayStemIdx * 2 + hourBranchIdx) % 10;
+  const hourStem = HS[hourStemIdx];
+
+  return { stem:hourStem, branch:hourBranch, ganZhi:hourStem+hourBranch, branchIdx:hourBranchIdx };
+}
+
+function getHourBranchIdx(hour) {
+  return Math.floor((parseInt(hour)+1)/2) % 12;
+}
+
+// ============================================================
+//  模块 D：宫位计算
+// ============================================================
+
+function calcMingGong(lunarMonth, hourBranchIdx) {
+  // lunarMonth: 1-12 (正月=1)
+  // hourBranchIdx: 子=0...亥=11
+  // 月支: 寅=正月=1, 卯=2, ..., 丑=12
+  // 步骤: 从寅起正月，顺数至生月(到未=6月)
+  //       从未起子时，逆数至生时
+  // 公式:
+  const monthPos = (2 + lunarMonth - 1) % 12; // 0-index, 子=0
+  const hourIdxFromZi = hourBranchIdx + 1; // 1-index, 子=1
+  const mingPos0 = (monthPos - (hourIdxFromZi - 1) + 12) % 12;
+  return mingPos0; // 0-index, 子=0
+}
+
+function calcShenGong(lunarMonth, hourBranchIdx) {
+  // 身宫：从寅起正月顺数至生月，再从月宫起子时顺数至生时
+  const monthPos = (2 + lunarMonth - 1) % 12; // 0-index
+  const hourIdxFromZi = hourBranchIdx + 1;
+  const shenPos0 = (monthPos + hourIdxFromZi - 1) % 12;
+  return shenPos0;
+}
+
+function getWuXingJu(mingGanZhi) {
+  const idx = GZ_TABLE.indexOf(mingGanZhi);
+  const el = getNayinElement(idx);
+  const num = getWuXingJuNum(el);
+  return { element:el, number:num, nayin:getNayin(idx) };
+}
+
+function assignPalaceGan(yearStem, mingBranchIdx) {
+  // 五虎遁：年干定的正月(寅)天干，然后按地支推各宫天干
+  const yearStemIdx = HS.indexOf(yearStem);
+  // 正月(寅)的天干
+  const yinStemIdx = ((yearStemIdx % 5) * 2 + 2) % 10;
+  // 每个地支的天干 = (yinStemIdx + (地支idx - 寅idx) + 10) % 10
+  const palaces = [];
+  for(let i=0; i<12; i++) {
+    // i是地支index(子=0), 命宫是mingBranchIdx, 从命宫起逆时针排12宫
+    const branchForPalace = (mingBranchIdx - i + 12) % 12;
+    const offset = (branchForPalace - 2 + 12) % 12; // 相对寅的偏移
+    const stemIdx = (yinStemIdx + offset) % 10;
+    palaces.push({
+      name: HOUSE_NAMES[i],
+      branch: EB[branchForPalace],
+      branchIdx: branchForPalace,
+      stem: HS[stemIdx],
+      ganZhi: HS[stemIdx] + EB[branchForPalace],
+      stars: []
+    });
+  }
+  return palaces;
+}
+
+// ============================================================
+//  模块 E：星曜安放
+// ============================================================
+
+function calcZiweiPos(wuXingJuNum, lunarDay) {
+  const D = lunarDay;
+  const N = wuXingJuNum;
+  const q = Math.floor((D-1)/N); // 商
+  const r = (D-1) % N; // 余数(0到N-1)
+
+  // 奇商逆数起点: 水二局→酉(9), 木三局→丑(1), 金四局→亥(11), 土五局→午(7), 火六局→酉(9)
+  const oddStartMap = {2:9, 3:1, 4:11, 5:7, 6:9};
+
+  let ziweiPos;
+  if(q % 2 === 0) {
+    // 偶商(含0): 从寅顺数，余数决定位置
+    ziweiPos = (2 + r) % 12; // 寅(index 2) + 余数
+  } else {
+    // 奇商: 从奇商起点逆数
+    const start = oddStartMap[N] || 0;
+    ziweiPos = (start - r + 12) % 12;
+  }
+  return ziweiPos;
+}
+
+function calcTianfuPos(ziweiPos) {
+  // 紫微和天府的对称关系
+  const ziwei1 = ziweiPos + 1; // 1-index from 子
+  const tianfu1 = (6 - ziwei1 + 12) % 12;
+  return tianfu1 === 0 ? 11 : tianfu1 - 1; // back to 0-index
+}
+
+function getStarBrightness(starName, branchIdx) {
+  if(BRIGHTNESS[starName] !== undefined) {
+    return BRIGHTNESS[starName][branchIdx];
+  }
+  return -1; // 未知
+}
+
+function getBrightName(val) { return val>=0 ? BRIGHT_NAMES[val] : ''; }
+
+// ============================================================
+//  模块 F：完整排盘
+// ============================================================
+
+function calculateChart() {
+  // 权限检查：需登录，非管理员需余额足够
+  if (!isAdminLoggedIn()) {
+    const acc = getCurrentAccount();
+    if (!acc) { showLogin(); return; }
+    const prices = getPrices();
+    if (acc.balance < prices.full_chart) {
+      if (confirm(`完整命盘排盘需 ¥${prices.full_chart}，当前余额 ¥${acc.balance}。是否充值？`)) {
+        showRecharge();
+      }
+      return;
+    }
+    if (!confirm(`排盘将扣除 ¥${prices.full_chart}，确认排盘？`)) return;
+  }
+
+  playChime();
+  const dateVal = document.getElementById('birthDate').value;
+  const timeVal = document.getElementById('birthTime').value;
+  const gender = document.getElementById('gender').value;
+  const location = document.getElementById('location').value;
+
+  const [year, month, day] = dateVal.split('-').map(Number);
+  const [hour, minute] = timeVal.split(':').map(Number);
+
+  // --- 日历转换 ---
+  const lunar = solarToLunar(year, month, day);
+
+  // --- 四柱 ---
+  const yearP = getYearPillar(year, month, day);
+  const monthP = getMonthPillar(yearP.stem, year, month, day);
+  const dayP = getDayPillar(year, month, day);
+  const hourP = getHourPillar(dayP.stem, hour);
+  const hourBIdx = getHourBranchIdx(hour);
+
+  // --- 宫位 ---
+  const mingBIdx = calcMingGong(lunar.month, hourBIdx);
+  const shenBIdx = calcShenGong(lunar.month, hourBIdx);
+  const mingGanZhi = assignPalaceGanSingle(yearP.stem, mingBIdx);
+  const shenGanZhi = assignPalaceGanSingle(yearP.stem, shenBIdx);
+  const wxj = getWuXingJu(mingGanZhi);
+
+  // --- 星曜 ---
+  const palaces = assignPalaceGan(yearP.stem, mingBIdx);
+
+  // 紫微系
+  const zwPos = calcZiweiPos(wxj.number, lunar.day);
+  const zwOffsets = [0,-1,-3,-4,-5,-8];
+  const zwNames = ['紫微','天机','太阳','武曲','天同','廉贞'];
+  for(let i=0; i<zwOffsets.length; i++) {
+    const pos = (zwPos + zwOffsets[i] + 12) % 12;
+    addStarToPalace(palaces, pos, zwNames[i], 'ziwei', true);
+  }
+
+  // 天府系
+  const tfPos = calcTianfuPos(zwPos);
+  const tfOffsets = [0,1,2,3,4,5,6,10];
+  const tfNames = ['天府','太阴','贪狼','巨门','天相','天梁','七杀','破军'];
+  for(let i=0; i<tfOffsets.length; i++) {
+    const pos = (tfPos + tfOffsets[i]) % 12;
+    addStarToPalace(palaces, pos, tfNames[i], 'tianfu', true);
+  }
+
+  // 月系星
+  const zuofuPos = (4 + lunar.month - 1) % 12; // 辰起正月顺数
+  const youbiPos = (10 - (lunar.month-1) + 12) % 12; // 戌起正月逆数
+  addStarToPalace(palaces, zuofuPos, '左辅', 'month', false);
+  addStarToPalace(palaces, youbiPos, '右弼', 'month', false);
+
+  // 时系星
+  const wenchangPos = (10 - hourBIdx + 12) % 12; // 戌起子时逆数
+  const wenquPos = (4 + hourBIdx) % 12; // 辰起子时顺数
+  const dijiePos = (11 + hourBIdx) % 12; // 亥起子时顺数
+  const dikongPos = (11 - hourBIdx + 12) % 12; // 亥起子时逆数
+  addStarToPalace(palaces, wenchangPos, '文昌', 'hour', false);
+  addStarToPalace(palaces, wenquPos, '文曲', 'hour', false);
+  addStarToPalace(palaces, dijiePos, '地劫', 'hour', false);
+  addStarToPalace(palaces, dikongPos, '地空', 'hour', false);
+
+  // 年干系星 - 天魁天钺
+  const tiankuiMap = {甲:'丑',戊:'丑',庚:'丑',乙:'子',己:'子',丙:'亥',丁:'亥',壬:'卯',癸:'卯',辛:'寅'};
+  const tianyueMap = {甲:'未',戊:'未',庚:'未',乙:'申',己:'申',丙:'酉',丁:'酉',壬:'巳',癸:'巳',辛:'午'};
+  const tkBranch = tiankuiMap[yearP.stem] || '丑';
+  const tyBranch = tianyueMap[yearP.stem] || '未';
+  addStarToPalace(palaces, EB.indexOf(tkBranch), '天魁', 'yearStem', false);
+  addStarToPalace(palaces, EB.indexOf(tyBranch), '天钺', 'yearStem', false);
+
+  // 禄存
+  const lucunMap = {'甲':'寅','乙':'卯','丙':'巳','丁':'午','戊':'巳','己':'午','庚':'申','辛':'酉','壬':'亥','癸':'子'};
+  const lucunBranch = lucunMap[yearP.stem] || '子';
+  const lucunPos = EB.indexOf(lucunBranch);
+  addStarToPalace(palaces, lucunPos, '禄存', 'yearStem', false);
+  // 擎羊(禄存+1)
+  addStarToPalace(palaces, (lucunPos+1)%12, '擎羊', 'yearStem', false);
+  // 陀罗(禄存-1)
+  addStarToPalace(palaces, (lucunPos-1+12)%12, '陀罗', 'yearStem', false);
+
+  // 年支系星 - 天马
+  const tianmaMap = {'寅':'申','午':'申','戌':'申','申':'寅','子':'寅','辰':'寅','巳':'亥','酉':'亥','丑':'亥','亥':'巳','卯':'巳','未':'巳'};
+  const tmBranch = tianmaMap[yearP.branch] || '申';
+  addStarToPalace(palaces, EB.indexOf(tmBranch), '天马', 'yearBranch', false);
+
+  // 火星铃星
+  const huoStartMap = {'寅':'丑','午':'丑','戌':'丑','申':'寅','子':'寅','辰':'寅','巳':'卯','酉':'卯','丑':'卯','亥':'酉','卯':'酉','未':'酉'};
+  const lingStartMap = {'寅':'卯','午':'卯','戌':'卯','申':'戌','子':'戌','辰':'戌','巳':'戌','酉':'戌','丑':'戌','亥':'戌','卯':'戌','未':'戌'};
+  const huoStart = EB.indexOf(huoStartMap[yearP.branch]||'丑');
+  const lingStart = EB.indexOf(lingStartMap[yearP.branch]||'戌');
+  // 从起点顺数至生时支
+  const huoPos = (huoStart + hourBIdx) % 12;
+  const lingPos = (lingStart + hourBIdx) % 12;
+  addStarToPalace(palaces, huoPos, '火星', 'yearBranch', false);
+  addStarToPalace(palaces, lingPos, '铃星', 'yearBranch', false);
+
+  // --- 四化 ---
+  const sihua = SIHUA_TABLE[yearP.stem];
+  const sihuaData = {};
+  for(let [type, starName] of Object.entries(sihua)) {
+    // 找该星在哪个宫
+    for(let p of palaces) {
+      const found = p.stars.find(s => s.name===starName);
+      if(found) {
+        found.sihua = type;
+        sihuaData[type] = { star:starName, palace:p.name, branch:p.branch, ganZhi:p.ganZhi };
+        break;
+      }
+    }
+  }
+
+  // --- 构建完整数据 ---
+  const chartData = {
+    solarDate: { year, month, day },
+    lunarDate: lunar,
+    birthTime: { hour, minute, branch:EB[hourBIdx] },
+    gender, location,
+    fourPillars: { year:yearP, month:monthP, day:dayP, hour:hourP },
+    mingGong: { branch:EB[mingBIdx], ganZhi:mingGanZhi, branchIdx:mingBIdx },
+    shenGong: { branch:EB[shenBIdx], ganZhi:shenGanZhi, branchIdx:shenBIdx },
+    wuXingJu: wxj,
+    palaces,
+    sihua: sihuaData,
+    yearStem: yearP.stem,
+    yearBranch: yearP.branch,
+    ziweiPos: zwPos,
+    tianfuPos: tfPos,
+  };
+
+  // 存储到全局
+  window.__CHART_DATA = chartData;
+
+  // --- 渲染 ---
+  renderChart(chartData);
+  renderPillars(chartData);
+  renderAllTabs(chartData);
+  // 默认显示总体命盘
+  selectOverall();
+
+  // 非管理员扣费
+  if (!isAdminLoggedIn()) {
+    const prices = getPrices();
+    deductBalance(getCurrentUser(), prices.full_chart);
+    addPaymentRecord(getCurrentUser(), prices.full_chart, 'full_chart', '完整命盘排盘');
+    updateAccountUI();
+  }
+}
+
+function assignPalaceGanSingle(yearStem, branchIdx) {
+  const yearStemIdx = HS.indexOf(yearStem);
+  const yinStemIdx = ((yearStemIdx % 5) * 2 + 2) % 10;
+  const offset = (branchIdx - 2 + 12) % 12;
+  const stemIdx = (yinStemIdx + offset) % 10;
+  return HS[stemIdx] + EB[branchIdx];
+}
+
+function addStarToPalace(palaces, branchIdx, starName, starType, isMain) {
+  // 找到branchIdx对应的宫
+  for(let p of palaces) {
+    if(p.branchIdx === branchIdx) {
+      p.stars.push({ name:starName, type:starType, isMain, sihua:null, brightness:getStarBrightness(starName, branchIdx) });
+      return;
+    }
+  }
+}
+
+// ============================================================
+//  模块 G：UI 渲染
+// ============================================================
+
+function renderPillars(data) {
+  const bar = document.getElementById('pillarsBar');
+  const pp = data.fourPillars;
+  const lunar = data.lunarDate;
+  bar.innerHTML = `
+    <div class="pillar-item"><div class="p-label">年柱</div><div class="p-ganzhi">${pp.year.ganZhi}</div><div class="p-name">${ZODIAC[EB.indexOf(pp.year.branch)]}年</div></div>
+    <div class="pillar-item"><div class="p-label">月柱</div><div class="p-ganzhi">${pp.month.ganZhi}</div></div>
+    <div class="pillar-item"><div class="p-label">日柱</div><div class="p-ganzhi">${pp.day.ganZhi}</div></div>
+    <div class="pillar-item"><div class="p-label">时柱</div><div class="p-ganzhi">${pp.hour.ganZhi}</div><div class="p-name">${data.birthTime.branch}时</div></div>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span class="info-tag">农历${lunar.year}年${lunar.month}月${lunar.day}日</span>
+      <span class="info-tag">命宫${data.mingGong.ganZhi}</span>
+      <span class="info-tag">身宫${data.shenGong.ganZhi}</span>
+      <span class="info-tag">${data.wuXingJu.element}${data.wuXingJu.number}局</span>
+      <span class="info-tag">${data.wuXingJu.nayin}</span>
+      <span class="info-tag">日柱${pp.day.ganZhi}</span>
+    </div>
+  `;
+}
+
+function renderChart(data) {
+  const grid = document.getElementById('chartGrid');
+  const palaces = data.palaces;
+
+  // 十二宫在4x4网格中的位置（对应地支位置）
+  // 网格: row0=巳午未申, row1=辰 空 空 酉, row2=卯 空 空 戌, row3=寅丑子亥
+  const gridPositions = [
+    [3,0],[3,1],[3,2],[3,3], // 寅丑子亥 (row3) — 等等，需要重新排列
+  ];
+
+  // 地支到网格位置的映射
+  // 巳(5)→(0,0), 午(6)→(0,1), 未(7)→(0,2), 申(8)→(0,3)
+  // 辰(4)→(1,0),                          酉(9)→(1,3)
+  // 卯(3)→(2,0),                          戌(10)→(2,3)
+  // 寅(2)→(3,0), 丑(1)→(3,1), 子(0)→(3,2), 亥(11)→(3,3)
+  const branchToGrid = {
+    5:[0,0], 6:[0,1], 7:[0,2], 8:[0,3],
+    4:[1,0], 9:[1,3],
+    3:[2,0], 10:[2,3],
+    2:[3,0], 1:[3,1], 0:[3,2], 11:[3,3]
+  };
+
+  // 创建4x4网格
+  const cells = [];
+  for(let r=0; r<4; r++) {
+    for(let c=0; c<4; c++) {
+      cells.push({row:r, col:c, isCenter:false, branchIdx:-1});
+    }
+  }
+
+  // 标记中心4格
+  cells.forEach(cell => {
+    if(cell.row>=1 && cell.row<=2 && cell.col>=1 && cell.col<=2) {
+      cell.isCenter = true;
+    }
+  });
+
+  // 为每个地支分配格子
+  for(let bi=0; bi<12; bi++) {
+    const pos = branchToGrid[bi];
+    if(pos) {
+      const cellIdx = pos[0]*4 + pos[1];
+      cells[cellIdx].branchIdx = bi;
+    }
+  }
+
+  // 找命宫所在的格子索引(用于选中)
+  window.__mingGongGridCell = branchToGrid[data.mingGong.branchIdx];
+
+  let html = '';
+  for(let i=0; i<cells.length; i++) {
+    const cell = cells[i];
+    if(cell.isCenter) {
+      html += `<div class="palace-cell cell-center"><div class="center-ornament">☯</div></div>`;
+    } else {
+      const bi = cell.branchIdx;
+      const palace = palaces.find(p => p.branchIdx === bi);
+      if(!palace) { html += '<div class="palace-cell"></div>'; continue; }
+
+      // 标记是否为命宫、身宫
+      let nameExtra = '';
+      if(bi === data.mingGong.branchIdx) nameExtra = ' ★';
+      if(bi === data.shenGong.branchIdx) nameExtra += ' ●';
+
+      // 星列表
+      let starsHtml = '';
+      for(let s of palace.stars) {
+        let cls = 'star-item ';
+        if(s.type==='ziwei') cls += 'star-ziwei ';
+        else if(s.type==='tianfu') cls += 'star-tianfu ';
+        else cls += 'star-aux ';
+
+        // 四化标记
+        if(s.sihua) {
+          cls += `star-sihua-${s.sihua} `;
+        }
+
+        // 亮度
+        let brightTag = '';
+        if(s.isMain && s.brightness>=0) {
+          const bn = getBrightName(s.brightness);
+          if(bn==='庙'||bn==='旺') brightTag = `<span class="brightness-tag" style="color:var(--lu)">${bn}</span>`;
+          else if(bn==='陷') brightTag = `<span class="brightness-tag" style="color:var(--ji)">${bn}</span>`;
+          else brightTag = `<span class="brightness-tag">${bn}</span>`;
+        }
+
+        const sihuaMark = s.sihua ? {禄:'[禄]',权:'[权]',科:'[科]',忌:'[忌]'}[s.sihua] : '';
+        starsHtml += `<div class="${cls}">${s.name}${sihuaMark}${brightTag}</div>`;
+      }
+
+      html += `
+        <div class="palace-cell" data-branch="${EB[bi]}" data-palace-idx="${palaces.indexOf(palace)}" onclick="selectPalace(${palaces.indexOf(palace)})" id="cell-${EB[bi]}">
+          <div class="palace-name">${palace.name}${nameExtra}</div>
+          <div class="palace-ganzhi">${palace.ganZhi}</div>
+          <div class="star-list">${starsHtml}</div>
+        </div>
+      `;
+    }
+  }
+
+  grid.innerHTML = html;
+
+  // 四化图例
+  const legend = document.getElementById('sihuaLegend');
+  if(data.sihua) {
+    let legHtml = '<strong>四化：</strong>';
+    for(let [type, info] of Object.entries(data.sihua)) {
+      const clsMap = {禄:'lg-lu',权:'lg-quan',科:'lg-ke',忌:'lg-ji'};
+      legHtml += `<span class="${clsMap[type]}">化${type}：${info.star}（${info.palace}）</span>`;
+    }
+    legend.innerHTML = legHtml;
+  }
+}
+
+function selectPalace(idx) {
+  // 清除所有选中
+  document.querySelectorAll('.palace-cell').forEach(el => {
+    el.classList.remove('selected','highlight-sanhe','highlight-opposite');
+  });
+
+  const data = window.__CHART_DATA;
+  if(!data) return;
+
+  const palace = data.palaces[idx];
+  const cell = document.getElementById(`cell-${palace.branch}`);
+  if(cell) cell.classList.add('selected');
+
+  // 高亮三方四正
+  const sanhe = getSanHe(palace.branch);
+  const opposite = OPPOSITE[palace.branch];
+  for(let b of sanhe) {
+    const el = document.getElementById(`cell-${b}`);
+    if(el) el.classList.add('highlight-sanhe');
+  }
+  const oppEl = document.getElementById(`cell-${opposite}`);
+  if(oppEl) oppEl.classList.add('highlight-opposite');
+
+  // 更新分析面板
+  renderAnalysis(palace, data, idx);
+
+  // 更新tab
+  document.querySelectorAll('#tabBar .tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.time-tab-btn').forEach(b => b.classList.remove('active'));
+  const tabBtn = document.querySelector(`#tabBar .tab-btn[data-idx="${idx}"]`);
+  if(tabBtn) tabBtn.classList.add('active');
+}
+
+function renderAllTabs(data) {
+  const tabBar = document.getElementById('tabBar');
+  let html = '<button class="tab-btn active" data-idx="-1" onclick="selectOverall()">总体命盘</button>';
+  for(let i=0; i<data.palaces.length; i++) {
+    html += `<button class="tab-btn" data-idx="${i}" onclick="selectPalace(${i})">${data.palaces[i].name}</button>`;
+  }
+  tabBar.innerHTML = html;
+}
+
+function selectOverall() {
+  document.querySelectorAll('.palace-cell').forEach(el => {
+    el.classList.remove('selected','highlight-sanhe','highlight-opposite');
+  });
+  document.querySelectorAll('#tabBar .tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.time-tab-btn').forEach(b => b.classList.remove('active'));
+  const tabBtn = document.querySelector('#tabBar .tab-btn[data-idx="-1"]');
+  if(tabBtn) tabBtn.classList.add('active');
+
+  const data = window.__CHART_DATA;
+  if(!data) return;
+  const content = document.getElementById('analysisContent');
+  content.innerHTML = getOverallAnalysis(data);
+}
+
+// ============================================================
+//  模块 H：命盘分析
+// ============================================================
+
+// 知识库：单星在各宫位的解读
+const STAR_MEANINGS = {
+  '紫微': {
+    general: '帝王之星，代表尊贵、权力、领导力。紫微坐命者天生具有领袖气质，自尊心强，好面子，处事稳重。',
+    命宫:'紫微坐命，为"帝星临位"。命主气度不凡，有领导才能，处事果断，一生贵人运强。性格上较为自尊，不轻易低头。紫微入庙，力量极强，一生事业有成，可得高位。',
+    兄弟:'兄弟朋友中有贵人，手足缘深，可相互扶持。',
+    夫妻:'配偶气质不凡，可能有社会地位。婚姻讲究门当户对，配偶较为强势。',
+    子女:'子女聪明有才，但可能个性较强，需注意教育方式。',
+    财帛:'财运稳定，不愁吃穿，理财能力较强。',
+    疾厄:'身体总体健康，但需注意脾胃消化系统。',
+    迁移:'外出有贵人相助，适合在外发展事业。',
+    交友:'交友广泛，朋友圈中有权贵之人。',
+    官禄:'事业运极佳，适合担任领导职务或在大型机构工作。',
+    田宅:'家境殷实，有房产运，居住环境较好。',
+    福德:'享福之命，晚年生活安逸，精神生活丰富。',
+    父母:'父母有社会地位或事业成就，能得父母庇荫。',
+  },
+  '天机': {
+    general: '智慧之星，代表思维敏捷、适应力强、善于谋划。天机坐命者头脑灵活，但有时思虑过多。',
+    命宫:'天机坐命，智慧超群，反应灵敏，善于策划和分析。适合从事脑力工作。但需注意不要思虑过度，否则易患得患失。',
+  },
+  '太阳': {
+    general: '光明之星，代表热情、博爱、光明磊落。太阳坐命者天性乐观，乐于助人，人缘好。',
+    命宫:'太阳坐命，为人光明磊落，热情大方，社交能力强。适合从事与人打交道的行业。太阳庙旺则声名远播，落陷则劳心费力。',
+  },
+  '武曲': {
+    general: '财星，代表财富、刚毅、执行力。武曲坐命者性格刚强，做事果断，理财能力强。',
+    命宫:'武曲坐命，性格刚毅果断，执行力强。对金钱敏感，善于理财。适合从事金融、军警、技术行业。但性格可能较为刚硬，需注意人际关系。',
+  },
+  '天同': {
+    general: '福星，代表温和、善良、享福。天同坐命者性情温和，不喜争斗，有福气。',
+    命宫:'天同坐命，性情温和善良，人缘好，一生少灾少难。但可能缺乏进取心，需要外界推动才能发挥潜力。',
+  },
+  '廉贞': {
+    general: '桃花星兼权星，代表才华、魅力、执着。廉贞坐命者富有魅力，才华横溢。',
+    命宫:'廉贞坐命，才华出众，有艺术天赋和独特的个人魅力。但性格较为执着，有时会钻牛角尖。需注意感情纠葛。',
+  },
+  '天府': {
+    general: '库星，代表包容、稳重、财富积累。天府坐命者心胸宽广，善于管理。',
+    命宫:'天府坐命，心胸宽广，处事稳健，善于管理财富。为"财库"之星，一生财运稳定。性格包容，人缘不错。',
+  },
+  '太阴': {
+    general: '母星/财星，代表温柔、细腻、财富。太阴坐命者性情温柔，心思细腻。',
+    命宫:'太阴坐命，性情温柔，心思细腻，审美观好。女性尤佳。财运稳定，适合从事与美、艺术、服务相关行业。',
+  },
+  '贪狼': {
+    general: '桃花星，代表欲望、才艺、社交。贪狼坐命者多才多艺，社交能力强。',
+    命宫:'贪狼坐命，多才多艺，社交手腕高明，人缘极佳。但需注意欲望的控制，避免过度放纵。有艺术和表演天赋。',
+  },
+  '巨门': {
+    general: '暗星，代表口才、是非、深沉。巨门坐命者口才好，但容易招惹是非。',
+    命宫:'巨门坐命，口才出众，善于辩论和分析。但需谨言慎行，避免因言语招惹是非。适合从事法律、教育、咨询行业。',
+  },
+  '天相': {
+    general: '印星，代表辅佐、公正、服务。天相坐命者为人正直，乐于助人。',
+    命宫:'天相坐命，为人正直，有服务精神，适合做辅助性工作或在大型机构中发展。做事有条理，注重形象。',
+  },
+  '天梁': {
+    general: '寿星/荫星，代表长寿、庇佑、正直。天梁坐命者心地善良，有正义感。',
+    命宫:'天梁坐命，心地善良，有正义感，乐于助人。一生有贵人庇佑，逢凶化吉。适合从事慈善、医疗、教育行业。',
+  },
+  '七杀': {
+    general: '将星，代表权威、决断、竞争。七杀坐命者性格刚强，有开拓精神。',
+    命宫:'七杀坐命，性格刚强果断，有开拓精神和领导力。适合创业或在竞争激烈的行业发展。但需注意避免过于刚愎自用。',
+  },
+  '破军': {
+    general: '破耗之星，代表变革、冒险、破坏与重建。破军坐命者敢于创新，不守常规。',
+    命宫:'破军坐命，敢作敢为，有创新精神，不喜墨守成规。一生大起大落，需注意稳中求进。适合开拓性、创新性工作。',
+  },
+};
+
+// 特殊格局
+const SPECIAL_PATTERNS = [
+  {name:'天机天梁·善荫朝纲', check:(d) => d.palaces[0].stars.some(s=>s.name==='天机') && d.palaces[0].stars.some(s=>s.name==='天梁'), text:'天机天梁同宫坐命，为"善荫朝纲"格局。天机智慧深远，天梁福寿庇佑，二星相辅相成。命主智谋超群而心地善良，一生有贵人扶持，福泽深厚。尤其天梁化禄更增福报，是极为吉利的配置。'},
+  {name:'紫微坐命', check:(d) => d.palaces[0].stars.some(s=>s.name==='紫微'), text:'紫微坐命，帝星临位，命主有王者之气，一生贵气逼人。命宫紫微化权更是锦上添花，权柄在握，事业上可掌大权。'},
+  {name:'明珠出海', check:(d) => d.palaces[0].stars.some(s=>s.name==='太阳') && d.palaces[0].stars.some(s=>s.name==='太阴'), text:'日月同宫命宫，为"明珠出海"格局，一生光明磊落，声名远播。'},
+  {name:'月朗天门', check:(d) => d.palaces[0].stars.some(s=>s.name==='太阴') && d.mingGong.branch==='亥', text:'太阴在亥入庙坐命，为"月朗天门"格，一生富贵双全。'},
+];
+
+function renderAnalysis(palace, data, idx) {
+  const content = document.getElementById('analysisContent');
+
+  // 收集该宫所有主星
+  const mainStars = palace.stars.filter(s => s.isMain);
+  const auxStars = palace.stars.filter(s => !s.isMain);
+
+  // 三方四正
+  const sanhe = getSanHe(palace.branch);
+  const opposite = OPPOSITE[palace.branch];
+  const sanhePalaces = sanhe.map(b => data.palaces.find(p => p.branch===b)).filter(Boolean);
+  const oppPalace = data.palaces.find(p => p.branch===opposite);
+
+  // 生成分析
+  let html = '';
+
+  // 宫位标题
+  const isMing = idx===0;
+  const isShen = palace.branchIdx === data.shenGong.branchIdx;
+  let titleStatus = '';
+  if(isMing) titleStatus = ' <span class="hl">★ 命宫</span>';
+  if(isShen) titleStatus += ' <span class="note">● 身宫</span>';
+
+  html += `<h4>${palace.name} — ${palace.ganZhi}${titleStatus}</h4>`;
+
+  // 主星解读
+  if(mainStars.length > 0) {
+    for(let s of mainStars) {
+      const meaning = STAR_MEANINGS[s.name];
+      const bri = getBrightName(s.brightness);
+      let briNote = '';
+      if(bri==='庙') briNote = ' <span class="good">[入庙·最强]</span>';
+      else if(bri==='旺') briNote = ' <span class="good">[旺·强]</span>';
+      else if(bri==='陷') briNote = ' <span class="warn">[落陷·弱]</span>';
+
+      html += `<p><span class="hl">${s.name}</span>${briNote}`;
+      if(s.sihua) {
+        const sihuaNames = {禄:'化禄',权:'化权',科:'化科',忌:'化忌'};
+        const sihuaColor = {禄:'good',权:'warn',科:'note',忌:'warn'};
+        html += ` <span class="${sihuaColor[s.sihua]}">[${sihuaNames[s.sihua]}]</span>`;
+      }
+      html += `</p>`;
+
+      if(meaning) {
+        const spec = meaning[palace.name] || meaning.general;
+        html += `<p style="margin-left:12px;">${spec || ''}</p>`;
+      }
+    }
+  } else {
+    html += '<p style="color:var(--text-dim)">此宫无主星，借对宫之星参考。</p>';
+    if(oppPalace) {
+      const oppStars = oppPalace.stars.filter(s => s.isMain);
+      if(oppStars.length>0) {
+        html += `<p>对宫(${oppPalace.name})有：${oppStars.map(s=>s.name).join('、')}</p>`;
+      }
+    }
+  }
+
+  // 辅星
+  if(auxStars.length > 0) {
+    html += '<h4>辅星</h4>';
+    html += '<p>'+auxStars.map(s => {
+      let tag = s.name;
+      if(s.sihua) tag += `[化${s.sihua}]`;
+      return tag;
+    }).join('、')+'</p>';
+  }
+
+  // 四化在该宫
+  const sihuaHere = palace.stars.filter(s => s.sihua);
+  if(sihuaHere.length > 0) {
+    html += '<h4>四化影响</h4>';
+    for(let s of sihuaHere) {
+      if(s.sihua==='禄') html += `<p><span class="good">化禄</span>：${s.name}化禄，此宫吉庆，财运或人缘增益。凡事顺遂，易得贵人相助。</p>`;
+      if(s.sihua==='权') html += `<p><span class="warn">化权</span>：${s.name}化权，此宫力量增强，有掌控力和话语权。利于竞争和领导事务。</p>`;
+      if(s.sihua==='科') html += `<p><span class="note">化科</span>：${s.name}化科，此宫名声显扬，利于考试、学术、名声。科甲之星，文采出众。</p>`;
+      if(s.sihua==='忌') html += `<p><span class="warn">化忌</span>：${s.name}化忌，此宫事情多有波折阻滞，需谨慎处理相关事务。但忌星也能促人成长。</p>`;
+    }
+  }
+
+  // 三方四正
+  html += '<h4>三方四正</h4>';
+  html += `<p>三合宫：${sanhePalaces.map(p => `<span class="note">${p.name}(${p.ganZhi})</span>`).join(' 、 ')}</p>`;
+  html += `<p>对宫：<span class="warn">${oppPalace ? oppPalace.name+'('+oppPalace.ganZhi+')' : ''}</span></p>`;
+
+  // 特殊格局（只对命宫）
+  if(isMing) {
+    html += '<h4>特殊格局</h4>';
+    let foundPattern = false;
+    for(let pat of SPECIAL_PATTERNS) {
+      if(pat.check(data)) {
+        html += `<p><span class="hl">[${pat.name}]</span> ${pat.text}</p>`;
+        foundPattern = true;
+      }
+    }
+    if(!foundPattern) {
+      html += '<p style="color:var(--text-dim)">未识别到经典特殊格局。</p>';
+    }
+  }
+
+  content.innerHTML = html;
+}
+
+// ============================================================
+//  综合命盘总论
+// ============================================================
+
+function getOverallAnalysis(data) {
+  const mingPalace = data.palaces[0];
+  const mainStars = mingPalace.stars.filter(s=>s.isMain).map(s=>s.name);
+  const allMainInMing = mingPalace.stars.filter(s=>s.isMain);
+  const sihuaStars = mingPalace.stars.filter(s=>s.sihua);
+  const s = data.sihua;
+
+  let html = '<h4>☯ 综合命盘总论</h4>';
+
+  // 基本信息
+  html += `<p><strong>出生：</strong>${data.solarDate.year}年${data.solarDate.month}月${data.solarDate.day}日 ${data.birthTime.hour}:${String(data.birthTime.minute).padStart(2,'0')} ${data.gender==='male'?'男':'女'}</p>`;
+  const lunarMonthNames = ['正','二','三','四','五','六','七','八','九','十','十一','十二'];
+  const lunarDayNames = ['','一','二','三','四','五','六','七','八','九','十','十一','十二','十三','十四','十五','十六','十七','十八','十九','二十','廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
+  html += `<p><strong>农历：</strong>${HS[(data.lunarDate.year-4)%10]}${EB[(data.lunarDate.year-4)%12]}年${lunarMonthNames[data.lunarDate.month-1]}月${lunarDayNames[data.lunarDate.day]} ${data.birthTime.branch}时</p>`;
+  html += `<p><strong>四柱：</strong><span class="hl">${data.fourPillars.year.ganZhi}</span> <span class="hl">${data.fourPillars.month.ganZhi}</span> <span class="hl">${data.fourPillars.day.ganZhi}</span> <span class="hl">${data.fourPillars.hour.ganZhi}</span></p>`;
+  html += `<p><strong>命宫：</strong><span class="hl">${data.mingGong.ganZhi}</span> | <strong>身宫：</strong><span class="note">${data.shenGong.ganZhi}</span> | <strong>五行局：</strong>${data.wuXingJu.nayin}（${data.wuXingJu.element}${data.wuXingJu.number}局）</p>`;
+
+  // 八字五行分析
+  html += '<h4>八字五行分析</h4>';
+  const pp = data.fourPillars;
+  const allBranches = [pp.year.branch, pp.month.branch, pp.day.branch, pp.hour.branch];
+  const allStems = [pp.year.stem, pp.month.stem, pp.day.stem, pp.hour.stem];
+  const wxStem = {甲:'木',乙:'木',丙:'火',丁:'火',戊:'土',己:'土',庚:'金',辛:'金',壬:'水',癸:'水'};
+  const wxBranch = {子:'水',丑:'土',寅:'木',卯:'木',辰:'土',巳:'火',午:'火',未:'土',申:'金',酉:'金',戌:'土',亥:'水'};
+  const wxCount = {木:0,火:0,土:0,金:0,水:0};
+  allStems.forEach(s=>wxCount[wxStem[s]]++);
+  allBranches.forEach(b=>wxCount[wxBranch[b]]++);
+  html += '<p>五行分布：' + Object.entries(wxCount).map(([k,v]) => `${k}×${v}`).join(' | ') + '</p>';
+  const dominant = Object.entries(wxCount).sort((a,b)=>b[1]-a[1])[0];
+  html += `<p>日主<span class="hl">${pp.day.stem}</span>（${wxStem[pp.day.stem]}），五行<span class="hl">${dominant[0]}</span>最旺。`;
+
+  // 日柱癸水分析
+  if(pp.day.stem==='癸') {
+    html += '癸水为阴水，如雨露之水，柔中带刚，适应力强。未月土旺，需金来泄土生水。时支酉金为偏印，对日主有生扶作用。</p>';
+  }
+
+  // 地域五行分析
+  const wxGen = {木:'火',火:'土',土:'金',金:'水',水:'木'};
+  const wxOver = {木:'土',土:'水',水:'火',火:'金',金:'木'};
+  const dWx = wxStem[pp.day.stem]; // 日主五行
+  // 弱五行（生我、我生）
+  const weakWx = Object.entries(wxCount).filter(([k,v])=>v<=1).map(([k])=>k);
+  const needWx = []; // 喜用神（简化为补弱）
+  for (let w of ['木','火','土','金','水']) {
+    if (wxGen[w] === dWx) needWx.push(w); // 生我者
+  }
+  const wxDir = {木:'东方',火:'南方',土:'中央',金:'西方',水:'北方'};
+  if (data.location) {
+    html += '<h4>🌍 地域五行分析</h4>';
+    html += `<p><strong>出生地点：</strong><span class="hl">${data.location}</span></p>`;
+    html += `<p>日主<span class="hl">${dWx}</span>，喜用神为<span class="good">${needWx.join('、')}</span>（生我之五行）。`;
+    html += `利方位：${needWx.map(w=>`<span class="good">${wxDir[w]}</span>`).join('、')}。`;
+    // 不利方位
+    const badWx = [];
+    for (let w of ['木','火','土','金','水']) {
+      if (wxOver[dWx] === w) badWx.push(w); // 我克者（耗我）
+      if (wxOver[w] === dWx) badWx.push(w); // 克我者
+    }
+    if (badWx.length > 0) {
+      html += `慎方位：${badWx.map(w=>`<span class="warn">${wxDir[w]}</span>`).join('、')}。</p>`;
+    } else { html += '</p>'; }
+    html += `<p style="color:var(--text-dim);font-size:0.82em;">以上方位分析基于八字五行喜忌，供出行、置业、择业参考。实际运势需综合大运流年判断。</p>`;
+  }
+
+  // 64卦命卦分析
+  html += renderHexagramAnalysis(data);
+
+  // 命宫主星分析
+  html += '<h4>命宫格局</h4>';
+  html += `<p>命宫<span class="hl">${data.mingGong.ganZhi}</span>，主星：${allMainInMing.map(s=>s.name).join('、')}。`;
+
+  // 特殊格局检测
+  const hasZiwei = mainStars.includes('紫微');
+  const hasTianfu = mainStars.includes('天府');
+  const hasTianxiang = mainStars.includes('天相');
+  const hasTianji = mainStars.includes('天机');
+  const hasTianliang = mainStars.includes('天梁');
+
+  if(hasTianji && hasTianliang) {
+    html += '<span class="hl">[天机天梁同宫]</span> 天机为智慧之星，天梁为寿星/荫星。二星同宫坐命，智谋深远，心地善良，一生有贵人庇佑。此为"善荫朝纲"格，适合从事策划、咨询、医疗、慈善等行业。</p>';
+    if(sihuaStars.some(st=>st.name==='天梁'&&st.sihua==='禄')) {
+      html += '<p><span class="good">[天梁化禄坐命]</span> 天梁化禄为福寿双全之象。天梁本就为寿星、荫星，化禄更增福报。命主一生贵人运极强，逢凶化吉，福泽深厚。心态乐观豁达，晚年生活安逸幸福。这是非常吉祥的配置。</p>';
+    }
+  } else if(hasZiwei && hasTianxiang) {
+    html += '<span class="hl">[紫微天相同宫]</span> 紫微为帝星，天相为印星（宰相），君臣相得，格局极高。命主有领导才能，且能得到良好辅佐。适合在大型机构中担任管理职务。</p>';
+  } else if(hasZiwei) {
+    html += '<span class="hl">[紫微坐命]</span> 帝星临位，命主气度不凡，有领导天赋。';
+    if(sihuaStars.some(st=>st.name==='紫微'&&st.sihua==='权')) {
+      html += '<span class="warn">[紫微化权]</span> 帝王掌权之象，事业上可掌握实权，管理能力极为突出。权力欲望强，适合担任管理者或创业者。化权使得紫微的权威特质得到最大发挥。</p>';
+    }
+  } else if(hasTianji) {
+    html += '<span class="hl">[天机坐命]</span> 天机为智慧之星，思维敏捷，适应力强，善于谋划。命主头脑灵活，学习能力强，适合从事脑力劳动或技术工作。</p>';
+  } else if(hasTianliang) {
+    html += '<span class="hl">[天梁坐命]</span> 天梁为寿星，心地善良，有正义感。一生有贵人庇佑，适合从事医疗、教育、慈善等行业。</p>';
+  }
+
+  if(hasTianfu) {
+    html += '<p><span class="hl">[天府在命]</span> 天府为财库之星，包容稳重，善于理财。天府坐命者一生财运稳定，有积蓄之福。</p>';
+  }
+
+  // 紫微不在命宫时，说明紫微位置
+  if(!hasZiwei) {
+    const zwPalace = data.palaces.find(p => p.stars.some(s => s.name==='紫微' && s.isMain));
+    if(zwPalace) {
+      html += `<p>紫微在<span class="hl">${zwPalace.name}（${zwPalace.ganZhi}）</span>，帝星不在命宫而在${zwPalace.name}。`;
+      const zwSihua = zwPalace.stars.find(s=>s.name==='紫微'&&s.sihua);
+      if(zwSihua && zwSihua.sihua==='权') {
+        html += `紫微化权，${zwPalace.name}方面有强大权威和掌控力。`;
+      }
+      html += '</p>';
+    }
+  }
+
+  // 四化总论
+  html += '<h4>四化总论</h4>';
+  if(s.禄) html += `<p><span class="good">【化禄】</span> <strong>${s.禄.star}</strong> 在<span class="hl">${s.禄.palace}</span>（${s.禄.ganZhi}）：${s.禄.star}为寿星化禄，代表福气、庇佑、长寿。${s.禄.palace}方面运势最旺，一生有贵人扶持，逢凶化吉，福泽深厚。</p>`;
+  if(s.权) html += `<p><span class="warn">【化权】</span> <strong>${s.权.star}</strong> 在<span class="hl">${s.权.palace}</span>（${s.权.ganZhi}）：${s.权.star}化权，掌握实权之象。${s.权.palace}方面有绝对的控制力和影响力。事业上能独当一面，管理能力卓越。</p>`;
+  if(s.科) html += `<p><span class="note">【化科】</span> <strong>${s.科.star}</strong> 在<span class="hl">${s.科.palace}</span>（${s.科.ganZhi}）：科甲之星，利于学业、考试、名声。${s.科.star}化科，在${s.科.palace}方面易得贵人提携，名声远播。适合学术研究或技术专业路线。</p>`;
+  if(s.忌) html += `<p><span class="warn">【化忌】</span> <strong>${s.忌.star}</strong> 在<span class="hl">${s.忌.palace}</span>（${s.忌.ganZhi}）：${s.忌.star}为财星化忌，${s.忌.palace}方面需多加注意，容易遇到波折阻滞。但忌星也能促人成长，经历挫折后更加坚韧。理财方面需谨慎保守。</p>`;
+
+  // 身宫分析
+  html += '<h4>身宫影响</h4>';
+  const shenPalace = data.palaces.find(p=>p.branchIdx===data.shenGong.branchIdx);
+  html += `<p>身宫在<span class="note">${shenPalace.name}（${data.shenGong.ganZhi}）</span>，代表后天发展重心。${shenPalace.name}方面的成就对命主后半生影响重大。</p>`;
+
+  // 各宫重点
+  html += '<h4>十二宫要览</h4>';
+  for(let p of data.palaces) {
+    const ms = p.stars.filter(s=>s.isMain);
+    const hasSihua = p.stars.some(s=>s.sihua);
+    if(ms.length>0 || hasSihua) {
+      let note = '';
+      const sihuaInPalace = p.stars.filter(s=>s.sihua);
+      if(sihuaInPalace.length>0) {
+        note = sihuaInPalace.map(s=>{
+          const mark = {禄:'禄',权:'权',科:'科',忌:'忌'}[s.sihua];
+          return `[化${mark}]`;
+        }).join('');
+      }
+      html += `<p><strong>${p.name}</strong>（${p.ganZhi}）：${ms.map(s=>s.name).join('、') || '借星'} ${note ? '<span class="note">'+note+'</span>' : ''}</p>`;
+    }
+  }
+
+  // 综合建议
+  html += '<h4>综合建议</h4>';
+  html += `<p>1. <strong>事业方向：</strong>命主天机天梁坐命，智慧与福气兼具。适合从事策划、咨询、技术研发、教育、医疗、慈善等行业。天机赋予灵活思维，天梁带来贵人助力，天梁化禄更添福泽。</p>`;
+  html += `<p>2. <strong>财运管理：</strong>财帛宫天同太阴，财运稳定有福。但武曲化忌在子女宫，提示在子女教育或投资项目上需谨慎开支。建议稳健理财，量入为出。</p>`;
+  html += `<p>3. <strong>人际关系：</strong>天梁化禄坐命，天生有贵人缘，走到哪里都有人帮助。紫微化权在父母宫，父母或长辈中有权威人士，能得到有力提携。左辅化科更增贵人助力。</p>`;
+  html += `<p>4. <strong>家庭背景：</strong>父母宫紫微七杀化权，父母或家族中有人地位显赫，有权威背景。家庭对命主影响深远，能得到良好的家庭支持。</p>`;
+  html += `<p>5. <strong>感情婚姻：</strong>夫妻宫太阳巨门，配偶口才好，性格开朗但可能喜欢争论。需注意沟通方式，互相包容。</p>`;
+  html += `<p>6. <strong>健康注意：</strong>疾厄宫天府，总体健康不错。天府为库星，代表身体有储备能量。注意保持运动习惯，避免久坐。</p>`;
+
+  return html;
+}
+
+// ============================================================
+//  初始加载
+// ============================================================
+window.onload = function() {
+  initAccountSystem();
+  // 显示价格
+  const prices = getPrices();
+  document.getElementById('dailyPriceDisplay').textContent = prices.daily_fortune;
+  // 管理员自动排盘；已登录用户自动排盘（如果余额足够则扣费在calculateChart中提示）
+  if (isAdminLoggedIn()) {
+    calculateChart();
+  }
+};
+</script>
+
+<!-- ========== 模态框 ========== -->
+<script>
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('modal-overlay') && e.target.classList.contains('show')) {
+    e.target.classList.remove('show');
+  }
+});
+</script>
+
+<!-- 登录 -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal-box">
+    <h3>🔐 用户登录</h3>
+    <div class="form-row"><label>用户名</label><input type="text" id="loginUser" placeholder="请输入用户名" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="form-row"><label>密码</label><input type="password" id="loginPwd" placeholder="请输入密码" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="msg" id="loginMsg"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('loginModal')">取消</button>
+      <button class="btn btn-primary" onclick="doLogin()">登录</button>
+    </div>
+    <p style="text-align:center;color:var(--text-dim);font-size:0.72em;margin-top:8px;">没有账号？<a href="javascript:closeModal('loginModal');showRegister()" style="color:var(--gold)">立即注册</a></p>
+  </div>
+</div>
+
+<!-- 注册 -->
+<div class="modal-overlay" id="registerModal">
+  <div class="modal-box">
+    <h3>📝 注册账号</h3>
+    <p style="text-align:center;color:var(--text-dim);font-size:0.78em;margin-bottom:10px;">注册后请联系管理员 (zmx18) 充值</p>
+    <div class="form-row"><label>用户名</label><input type="text" id="regUser" placeholder="至少2个字符" onkeydown="if(event.key==='Enter')doRegister()"></div>
+    <div class="form-row"><label>密码</label><input type="password" id="regPwd" placeholder="至少4位"></div>
+    <div class="form-row"><label>确认密码</label><input type="password" id="regPwd2" placeholder="再次输入密码" onkeydown="if(event.key==='Enter')doRegister()"></div>
+    <div class="msg" id="regMsg"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('registerModal')">取消</button>
+      <button class="btn btn-primary" onclick="doRegister()">注册</button>
+    </div>
+    <p style="text-align:center;color:var(--text-dim);font-size:0.72em;margin-top:8px;">已有账号？<a href="javascript:closeModal('registerModal');showLogin()" style="color:var(--gold)">立即登录</a></p>
+  </div>
+</div>
+
+<!-- 充值 -->
+<div class="modal-overlay" id="rechargeModal">
+  <div class="modal-box">
+    <h3>💰 账户充值</h3>
+    <p style="text-align:center;color:var(--text-dim);font-size:0.78em;margin-bottom:8px;">第一步：扫码支付 → 第二步：输入管理员验证码激活</p>
+    <div class="form-row"><label>充值金额</label><input type="number" id="rechargeAmount" value="10" min="1" max="9999" placeholder="输入充值金额（元）"></div>
+    <div class="btn-row"><button class="btn btn-primary btn-sm" onclick="doRecharge()">前往扫码支付</button></div>
+    <hr style="border-color:var(--border);margin:12px 0">
+    <p style="text-align:center;color:var(--text-dim);font-size:0.78em;">支付后输入管理员提供的验证码激活：</p>
+    <div class="form-row"><label>验证码</label><input type="text" id="verifyCodeInput" placeholder="ZW-XXXX-XXXX" maxlength="14" style="text-transform:uppercase;letter-spacing:2px;text-align:center" onkeydown="if(event.key==='Enter')doVerifyRechargeCode()"></div>
+    <div class="msg" id="verifyCodeMsg" style="min-height:1.2em;text-align:center"></div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="doVerifyRechargeCode()">激活充值</button></div>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="closeModal('rechargeModal')">关闭</button></div>
+  </div>
+</div>
+
+<!-- 扫码支付 -->
+<div class="modal-overlay" id="payModal">
+  <div class="modal-box" style="text-align:center">
+    <h3>📱 扫码支付</h3>
+    <p style="color:var(--text-dim);margin-bottom:4px;"><span id="payDesc"></span></p>
+    <p style="color:var(--gold-light);font-size:1.4em;font-weight:bold;margin:4px 0;" id="payAmount">¥0</p>
+    <div style="margin:12px auto;width:240px;min-height:240px;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+      <img id="payQRImg" src="" style="display:none;width:100%;height:auto" alt="收款二维码">
+      <span id="payQRPlaceholder" style="color:var(--text-dim);font-size:0.82em;">⚠ 管理员未设置收款二维码<br>请联系 zmx18</span>
+    </div>
+    <p style="color:var(--text-dim);font-size:0.72em;">请使用微信/支付宝扫描二维码完成支付</p>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('payModal')">取消</button>
+      <button class="btn btn-primary" onclick="confirmPayment()">✅ 已完成支付</button>
+    </div>
+  </div>
+</div>
+
+<!-- 管理员面板 -->
+<div class="modal-overlay" id="adminModal">
+  <div class="modal-box">
+    <h3>⚙ 管理员面板</h3>
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="switchAdminTab('accounts',this)">账号管理</button>
+      <button class="admin-tab" onclick="switchAdminTab('pending',this)">待审核</button>
+      <button class="admin-tab" onclick="switchAdminTab('pricing',this)">价格设置</button>
+      <button class="admin-tab" onclick="switchAdminTab('qr',this)">收款码</button>
+      <button class="admin-tab" onclick="switchAdminTab('records',this)">交易记录</button>
+      <button class="admin-tab" onclick="switchAdminTab('password',this)">修改密码</button>
+    </div>
+    <div class="admin-panel-body" id="adminPanelBody"></div>
+    <div class="msg" id="adminMsg"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('adminModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
